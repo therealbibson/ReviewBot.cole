@@ -1,3 +1,5 @@
+const navbar = document.querySelector('.navbar');
+const navToggle = document.querySelector('.nav-toggle');
 const form = document.getElementById('review-form');
 const submitButton = document.getElementById('submit-button');
 const statusPanel = document.getElementById('status-panel');
@@ -9,6 +11,7 @@ const overallScore = document.getElementById('overall-score');
 const safetyIndicator = document.getElementById('safety-indicator');
 const safetyStatus = document.getElementById('safety-status');
 const safetySummary = document.getElementById('safety-summary');
+const trustVerdictText = document.getElementById('trust-verdict-text');
 const metricsGrid = document.getElementById('metrics-grid');
 const worksList = document.getElementById('works-list');
 const brokenList = document.getElementById('broken-list');
@@ -19,6 +22,7 @@ const markdownReport = document.getElementById('markdown-report');
 const markdownTitle = document.getElementById('markdown-title');
 const markdownSummary = document.getElementById('markdown-summary');
 
+setupMobileNav();
 void loadHealth();
 void hydrateStoredReport();
 
@@ -52,6 +56,18 @@ if (form) {
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
+  });
+}
+
+function setupMobileNav() {
+  if (!navbar || !navToggle) {
+    return;
+  }
+
+  navToggle.addEventListener('click', () => {
+    const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+    navToggle.setAttribute('aria-expanded', String(!expanded));
+    navbar.classList.toggle('menu-open', !expanded);
   });
 }
 
@@ -124,6 +140,9 @@ function renderReport(report) {
     overallScore.className = scoreToneClass(report.scores.overall);
   }
   renderSafetyIndicator(report);
+  if (trustVerdictText) {
+    trustVerdictText.textContent = report.trustVerdict || 'Trust verdict unavailable for this review.';
+  }
   if (metricsGrid) {
     metricsGrid.replaceChildren(
       metricCard('Usefulness', report.scores.usefulness.score, report.scores.usefulness.summary),
@@ -150,6 +169,9 @@ function renderEmptyResults() {
     overallScore.className = '';
   }
   renderEmptySafetyIndicator();
+  if (trustVerdictText) {
+    trustVerdictText.textContent = 'Useful, safe, and economically viable status will appear here after a review.';
+  }
   if (metricsGrid) metricsGrid.replaceChildren();
   if (worksList) renderList(worksList, []);
   if (brokenList) renderList(brokenList, []);

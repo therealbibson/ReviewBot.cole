@@ -34,6 +34,7 @@ const reviewRequestSchema = z.object({
   askBotUrl: z.string().url().optional(),
   askBot: askBotSchema.optional(),
   walletAddress: z.string().optional(),
+  celoNetwork: z.enum(['celo-mainnet', 'celo-sepolia', 'not-applicable']).optional(),
   projectName: z.string().min(1).optional(),
   notes: z.string().max(5000).optional()
 });
@@ -89,6 +90,7 @@ app.post('/review', async (req: Request, res: Response) => {
     const report = await evaluateProject({
       ...parsed.data,
       askBot: parsed.data.askBot ?? config.askBot,
+      celoNetwork: parsed.data.celoNetwork ?? config.celoNetwork ?? 'celo-mainnet',
       attributionTag
     });
 

@@ -22,6 +22,7 @@ export interface ReviewRequest {
   askBotUrl?: string;
   askBot?: AskBotConfig;
   walletAddress?: string;
+  celoNetwork?: 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
   projectName?: string;
   notes?: string;
   attributionTag?: string;
@@ -73,6 +74,7 @@ export interface ReviewReport {
     walletAddress?: string;
   };
   summary: string;
+  trustVerdict: string;
   whatWorks: string[];
   whatIsBroken: string[];
   evidence: EvidenceItem[];
@@ -120,6 +122,15 @@ export interface CeloSnapshot {
   repoMentions: string[];
   inferredNetworks: string[];
   notes: string[];
+  onChain: {
+    checked: boolean;
+    network: 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
+    rpcUrl?: string;
+    balanceCelo?: number;
+    transactionCount?: number;
+    isContract?: boolean;
+    error?: string;
+  };
 }
 
 export interface EvaluationContext {

@@ -10,8 +10,8 @@ const WEIGHTS: Record<Category, number> = {
 
 export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
   const usefulness = scoreCategory(context, 'usefulness', 75);
-  const safety = scoreCategory(context, 'safety', 78);
-  const economicViability = scoreCategory(context, 'economicViability', 60);
+  const safety = scoreCategory(context, 'safety', safetyStartingScore(context));
+  const economicViability = scoreCategory(context, 'economicViability', economicViabilityStartingScore(context));
   const celoIntegration = scoreCategory(context, 'celoIntegration', context.repo.signals.mentionsCelo ? 78 : 45);
   const engineeringMaturity = scoreCategory(context, 'engineeringMaturity', 68);
 
@@ -22,7 +22,16 @@ export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
     celoIntegration.score * (WEIGHTS.celoIntegration / 100) +
     engineeringMaturity.score * (WEIGHTS.engineeringMaturity / 100);
 
-  const confidence = Math.max(0.35, Math.min(0.95, (context.evidence.length * 0.06) + (context.request.askBotUrl ? 0.1 : 0) + (context.request.walletAddress ? 0.08 : 0)));
+  const onChainVerified = context.celo.onChain.checked;
+  const confidence = Math.max(
+    0.3,
+    Math.min(
+      0.95,
+      (context.evidence.length * 0.05) +
+        (context.request.askBotUrl || context.request.askBot ? 0.1 : 0) +
+        (onChainVerified ? 0.15 : 0)
+    )
+  );
 
   return {
     usefulness,
@@ -33,6 +42,20 @@ export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
     overall: Math.round(weighted),
     confidence: Number(confidence.toFixed(2))
   };
+}
+
+function safetyStartingScore(context: EvaluationContext): number {
+  if (!context.celo.providedWallet) return 60;
+  if (context.celo.onChain.checked) return context.celo.onChain.isContract ? 68 : 78;
+  return 65;
+}
+
+function economicViabilityStartingScore(context: EvaluationContext): number {
+  if (!context.celo.providedWallet) return 35;
+  if (!context.celo.onChain.checked) return 45;
+
+  const hasActivity = (context.celo.onChain.transactionCount ?? 0) > 0 || (context.celo.onChain.balanceCelo ?? 0) > 0;
+  return hasActivity ? 75 : 40;
 }
 
 function scoreCategory(context: EvaluationContext, category: Category, startingScore: number): CategoryScore {

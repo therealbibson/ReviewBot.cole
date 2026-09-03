@@ -16,7 +16,8 @@
           <p class="brand-kicker">ReviewBot.Celo</p>
           <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
         </div>
-        <div class="nav-links">
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation menu">⋯</button>
+        <div class="nav-links" id="primary-nav">
           <a class="active" href="/">Review</a>
           <a href="/results">Results</a>
           <a href="/how-it-works">How it works</a>
@@ -25,41 +26,41 @@
 
       <section class="hero-card">
         <div class="hero-copy-block">
-          <p class="eyebrow">User testing for the bot economy</p>
-          <h1>Review agent projects with evidence, not vibes.</h1>
+          <p class="eyebrow">On-chain auditor for AI agents on Celo</p>
+          <h1>Test if an agent is useful, safe, and economically viable before you trust it with your money.</h1>
           <p class="hero-copy">
-            ReviewBot.Celo inspects a project’s repository, runtime behavior, and Celo signals, then turns what it actually finds into a structured review with severity, fixes, and a prioritized plan.
+            ReviewBot.Celo inspects an agent's repository, runtime behavior, and real on-chain wallet activity on Celo, then turns what it actually finds into a structured audit with severity, evidence, and a clear trust verdict.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="#review-form">Start a review</a>
+            <a class="primary-link" href="#review-form">Audit an agent</a>
             <span class="hero-note">Built for AskBots. Attribution-aware for Celo.</span>
           </div>
         </div>
 
         <div class="hero-sidecard">
-          <p class="sidecard-label">What the reviewer returns</p>
+          <p class="sidecard-label">What the audit answers</p>
           <ul class="clean-list">
-            <li>What works</li>
-            <li>What is broken</li>
-            <li>Evidence for each claim</li>
-            <li>Severity and concrete fixes</li>
-            <li>A score and improvement roadmap</li>
+            <li>Is it useful?</li>
+            <li>Is it safe?</li>
+            <li>Is it economically viable?</li>
+            <li>Evidence for every claim</li>
+            <li>A score and trust verdict</li>
           </ul>
         </div>
       </section>
 
       <section class="strip-grid">
         <article class="strip-card">
-          <p class="strip-title">Repository review</p>
-          <p>Checks docs, engineering signals, tests, CI, and implementation clues.</p>
+          <p class="strip-title">Useful</p>
+          <p>Checks the repository, docs, and runtime behavior to see if the agent actually does what it claims.</p>
         </article>
         <article class="strip-card">
-          <p class="strip-title">AskBots-aware</p>
-          <p>Uses the configured backend defaults without exposing advanced setup in the UI.</p>
+          <p class="strip-title">Safe</p>
+          <p>Looks for trust gaps, weak validation, and risky wallet or contract behavior before you rely on it.</p>
         </article>
         <article class="strip-card">
-          <p class="strip-title">Celo-aware</p>
-          <p>Keeps attribution constraints in scope and surfaces chain integration gaps.</p>
+          <p class="strip-title">Economically viable</p>
+          <p>Verifies real on-chain balance and transaction history on Celo, not just claims in a README.</p>
         </article>
       </section>
 
@@ -84,9 +85,9 @@
               </label>
 
               <label class="field-card">
-                <span class="field-label">Wallet address</span>
+                <span class="field-label">Agent's Celo wallet address</span>
                 <input type="text" name="walletAddress" placeholder="0x..." />
-                <small>Optional. Used for Celo-related checks.</small>
+                <small>Required to verify real on-chain balance and activity before trusting this agent.</small>
               </label>
             </div>
 

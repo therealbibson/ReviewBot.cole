@@ -1,3 +1,4 @@
+import { fetchOnChainWalletSnapshot } from '../../lib/celoRpc.js';
 import type { CeloSnapshot, EvidenceItem, RepoSnapshot, ReviewRequest } from '../types.js';
 
 const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
@@ -10,6 +11,7 @@ export async function collectCeloSnapshot(
   const repoMentions = repo.files.filter((file) => /celo|wallet|contract|viem|ethers/i.test(file)).slice(0, 20);
   const inferredNetworks = inferNetworks([repo.readme, JSON.stringify(repo.packageJson)]);
   const validWalletFormat = request.walletAddress ? ADDRESS_PATTERN.test(request.walletAddress) : false;
+  const network = request.celoNetwork ?? 'celo-mainnet';
 
   if (request.walletAddress) {
     evidence.push({
@@ -37,12 +39,71 @@ export async function collectCeloSnapshot(
     });
   }
 
+  let onChain: CeloSnapshot['onChain'] = { checked: false, network };
+
+  if (validWalletFormat && request.walletAddress && network !== 'not-applicable') {
+    const snapshot = await fetchOnChainWalletSnapshot(request.walletAddress, network);
+    onChain = {
+      checked: snapshot.checked,
+      network: snapshot.network,
+      rpcUrl: snapshot.rpcUrl,
+      balanceCelo: snapshot.balanceCelo,
+      transactionCount: snapshot.transactionCount,
+      isContract: snapshot.isContract,
+      error: snapshot.error
+    };
+
+    if (snapshot.checked) {
+      evidence.push({
+        type: 'http',
+        label: 'On-chain wallet balance',
+        detail: `Balance on ${network}: ${snapshot.balanceCelo?.toFixed(4)} CELO.`,
+        source: snapshot.rpcUrl,
+        status: 'pass'
+      });
+
+      evidence.push({
+        type: 'http',
+        label: 'On-chain transaction history',
+        detail: `Wallet has sent ${snapshot.transactionCount} transaction(s) on ${network}.`,
+        source: snapshot.rpcUrl,
+        status: (snapshot.transactionCount ?? 0) > 0 ? 'pass' : 'warn'
+      });
+
+      evidence.push({
+        type: 'http',
+        label: 'Wallet type check',
+        detail: snapshot.isContract
+          ? 'The provided address is a smart contract, not a plain wallet.'
+          : 'The provided address is a standard externally owned account (EOA).',
+        source: snapshot.rpcUrl,
+        status: 'info'
+      });
+    } else {
+      evidence.push({
+        type: 'http',
+        label: 'On-chain lookup failed',
+        detail: snapshot.error ?? 'Could not query the Celo RPC endpoint for this wallet.',
+        source: snapshot.rpcUrl,
+        status: 'fail'
+      });
+    }
+  } else if (network === 'not-applicable') {
+    evidence.push({
+      type: 'info',
+      label: 'On-chain check skipped',
+      detail: 'Celo network was marked as not applicable, so no on-chain audit was performed.',
+      status: 'info'
+    });
+  }
+
   return {
     providedWallet: Boolean(request.walletAddress),
     validWalletFormat,
     repoMentions,
     inferredNetworks,
-    notes: buildNotes(request, validWalletFormat, inferredNetworks)
+    notes: buildNotes(request, validWalletFormat, inferredNetworks),
+    onChain
   };
 }
 
@@ -57,7 +118,7 @@ function inferNetworks(values: Array<string | undefined>): string[] {
 
 function buildNotes(request: ReviewRequest, validWalletFormat: boolean, inferredNetworks: string[]): string[] {
   const notes: string[] = [];
-  if (!request.walletAddress) notes.push('No wallet address was provided, so onchain attribution and activity checks are limited.');
+  if (!request.walletAddress) notes.push('No wallet address was provided, so this audit could not verify real on-chain activity or economic viability.');
   if (request.walletAddress && !validWalletFormat) notes.push('The supplied wallet address format is invalid.');
   if (inferredNetworks.length === 0) notes.push('No explicit Celo network configuration was found from lightweight repo inspection.');
   return notes;

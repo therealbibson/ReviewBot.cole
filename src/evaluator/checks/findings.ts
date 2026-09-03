@@ -59,6 +59,48 @@ export function generateFindings(context: EvaluationContext): Finding[] {
     });
   }
 
+  if (!celo.providedWallet) {
+    findings.push({
+      title: 'No wallet provided for on-chain audit',
+      severity: 'high',
+      category: 'economicViability',
+      summary: 'Without a Celo wallet address, this audit cannot verify real on-chain activity, balance, or economic viability before trusting this agent with money.',
+      evidence: ['No walletAddress was supplied in the review request.'],
+      fix: 'Provide the agent\'s Celo wallet address so ReviewBot can verify balance, transaction history, and account type on-chain.'
+    });
+  } else if (celo.validWalletFormat && celo.onChain.checked) {
+    if ((celo.onChain.transactionCount ?? 0) === 0 && (celo.onChain.balanceCelo ?? 0) === 0) {
+      findings.push({
+        title: 'No on-chain track record',
+        severity: 'high',
+        category: 'economicViability',
+        summary: 'The provided wallet has zero CELO balance and zero outgoing transactions, so there is no verifiable on-chain history to support trust.',
+        evidence: [`Balance: ${celo.onChain.balanceCelo ?? 0} CELO. Transaction count: ${celo.onChain.transactionCount ?? 0}.`],
+        fix: 'Do not rely on this agent with real funds until it has demonstrated verifiable on-chain activity and a track record.'
+      });
+    }
+
+    if (celo.onChain.isContract) {
+      findings.push({
+        title: 'Wallet address is a smart contract',
+        severity: 'medium',
+        category: 'safety',
+        summary: 'The supplied address is a smart contract rather than a simple wallet, so it may execute arbitrary logic when receiving funds or calls.',
+        evidence: ['eth_getCode returned non-empty bytecode for this address.'],
+        fix: 'Review the contract source and permissions before trusting it with funds, and confirm it has been audited if it manages user assets.'
+      });
+    }
+  } else if (celo.validWalletFormat && !celo.onChain.checked && celo.onChain.network !== 'not-applicable') {
+    findings.push({
+      title: 'On-chain audit could not be completed',
+      severity: 'medium',
+      category: 'economicViability',
+      summary: 'ReviewBot could not reach the Celo RPC endpoint to verify this wallet, so economic viability could not be confirmed on-chain.',
+      evidence: [celo.onChain.error ?? 'RPC request failed.'],
+      fix: 'Retry the review, or verify the wallet address and network manually before trusting this agent with funds.'
+    });
+  }
+
   if (context.request.askBot?.reviewPath && (runtime.expectedKeysMatched?.length ?? 0) === 0 && (context.request.askBot.expectedResponseKeys?.length ?? 0) > 0) {
     findings.push({
       title: 'AskBot response contract is weakly matched',

@@ -7,11 +7,16 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
   const projectName = context.request.projectName ?? context.repo.packageJson?.name ?? context.repo.repo;
   const summary = summarize(scores.overall, context.findings.length, scores.confidence);
 
+  const trustVerdict = buildTrustVerdict(scores);
+
   const markdown = [
-    `# Review Summary`,
+    `# On-Chain Agent Audit`,
     ``,
     `## Final Score`,
     `${scores.overall}/100`,
+    ``,
+    `## Trust Verdict`,
+    trustVerdict,
     ``,
     `## Verdict`,
     summary,
@@ -57,6 +62,7 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
       walletAddress: context.request.walletAddress
     },
     summary,
+    trustVerdict,
     whatWorks,
     whatIsBroken,
     evidence: context.evidence,
@@ -67,6 +73,20 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
   };
 }
 
+function buildTrustVerdict(scores: ScoreBreakdown): string {
+  const usefulLabel = tierLabel(scores.usefulness.score);
+  const safeLabel = tierLabel(scores.safety.score);
+  const viableLabel = tierLabel(scores.economicViability.score);
+
+  return `Useful: ${usefulLabel}. Safe: ${safeLabel}. Economically viable: ${viableLabel}.`;
+}
+
+function tierLabel(score: number): string {
+  if (score >= 70) return 'Yes';
+  if (score >= 45) return 'Uncertain';
+  return 'No';
+}
+
 function inferWhatWorks(context: EvaluationContext): string[] {
   const works = new Set<string>();
   if (context.repo.readme) works.add('The project has discoverable documentation through a README.');
@@ -74,6 +94,13 @@ function inferWhatWorks(context: EvaluationContext): string[] {
   if (context.repo.signals.mentionsCelo) works.add('The repository shows concrete signs of Celo-related implementation or configuration.');
   if (context.repo.signals.hasCI) works.add('The repository appears to include automated CI workflows.');
   if (context.repo.signals.hasTests) works.add('The repository appears to include automated tests.');
+
+  if (context.celo.onChain.checked) {
+    if ((context.celo.onChain.transactionCount ?? 0) > 0 || (context.celo.onChain.balanceCelo ?? 0) > 0) {
+      works.add('The provided wallet has verifiable on-chain balance or transaction history on Celo.');
+    }
+  }
+
   if (works.size === 0) works.add('The repository is publicly inspectable, enabling evidence-driven review.');
   return Array.from(works);
 }

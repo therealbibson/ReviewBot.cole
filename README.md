@@ -1,18 +1,21 @@
 # ReviewBot Celo
 
-ReviewBot Celo is an evidence-driven evaluator for agent projects. Given a GitHub repository, an optional AskBot API configuration, and an optional wallet address, it investigates the agent/project itself and produces a structured review with:
+**On-chain auditor for AI agents on Celo.** ReviewBot.Celo tests whether an agent is useful, safe, and economically viable before you trust it with your money.
+
+Given a GitHub repository, an optional AskBot API configuration, and a Celo wallet address, it investigates the agent itself, queries real on-chain activity on Celo, and produces a structured audit with:
 
 Any transaction-capable or attribution-sensitive flow in ReviewBot.Celo is expected to carry your assigned Celo attribution tag.
 
+- a trust verdict: useful, safe, economically viable
 - what works
 - what is broken
-- evidence
+- evidence, including on-chain evidence
 - severity
 - specific fixes
 - a score
 - a prioritized improvement plan
 
-This MVP avoids static "just give it a score" behavior by collecting live evidence first, then scoring against a standardized rubric.
+This MVP avoids static "just give it a score" behavior by collecting live evidence first, including real Celo RPC lookups, then scoring against a standardized rubric.
 
 ## Current MVP capabilities
 
@@ -20,9 +23,12 @@ This MVP avoids static "just give it a score" behavior by collecting live eviden
 - fetches `README.md` and `package.json` when available
 - detects basic engineering signals such as tests, CI, Docker, and implementation cues
 - probes an AskBot health endpoint and review endpoint if provided
-- checks for lightweight Celo evidence in repo contents
-- validates optional wallet address format
-- produces both structured JSON and markdown report output
+- performs a real on-chain audit of the provided Celo wallet address via JSON-RPC:
+  - CELO balance
+  - outgoing transaction count
+  - whether the address is a smart contract or a plain wallet
+- flags agents with no verifiable on-chain track record before recommending trust
+- produces both structured JSON and markdown report output, including a trust verdict
 
 ## Frontend
 
