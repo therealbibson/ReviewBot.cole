@@ -70,16 +70,6 @@ export function generateFindings(context: EvaluationContext): Finding[] {
     });
   }
 
-  if (!repo.signals.hasEnvExample) {
-    findings.push({
-      title: 'Missing environment template',
-      severity: 'low',
-      category: 'engineeringMaturity',
-      summary: 'The project does not provide a clear environment variable template for setup.',
-      evidence: ['No .env.example or .env.sample file detected.'],
-      fix: 'Add a safe environment template documenting required runtime configuration.'
-    });
-  }
 
   if (!repo.signals.hasCI) {
     findings.push({

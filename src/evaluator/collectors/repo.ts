@@ -22,7 +22,6 @@ export async function collectRepoSnapshot(request: ReviewRequest, evidence: Evid
     hasTests: files.some((file) => /(^|\/)(test|tests|__tests__)\//i.test(file)) || files.some((file) => /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(file)),
     hasCI: files.some((file) => file.startsWith('.github/workflows/')),
     hasDocker: files.includes('Dockerfile') || files.includes('docker-compose.yml') || files.includes('docker-compose.yaml'),
-    hasEnvExample: files.includes('.env.example') || files.includes('.env.sample'),
     mentionsCelo: containsAny([readme, packageText], ['celo', 'alfajores', 'forno', '42220', '44787', 'sepolia']),
     mentionsAskBot: containsAny([readme, packageText], ['askbot', 'hypothesis']),
     likelyStack: inferLikelyStack(files, packageJson)

@@ -1,6 +1,6 @@
 # ReviewBot Celo
 
-ReviewBot Celo is an evidence-driven evaluator for agent projects. Given a GitHub repository, an optional AskBot API configuration, and an optional wallet address, it investigates the project and produces a structured review with:
+ReviewBot Celo is an evidence-driven evaluator for agent projects. Given a GitHub repository, an optional AskBot API configuration, and an optional wallet address, it investigates the agent/project itself and produces a structured review with:
 
 Any transaction-capable or attribution-sensitive flow in ReviewBot.Celo is expected to carry your assigned Celo attribution tag.
 
@@ -18,7 +18,7 @@ This MVP avoids static "just give it a score" behavior by collecting live eviden
 
 - indexes a public GitHub repository
 - fetches `README.md` and `package.json` when available
-- detects basic engineering signals such as tests, CI, Docker, and env templates
+- detects basic engineering signals such as tests, CI, Docker, and implementation cues
 - probes an AskBot health endpoint and review endpoint if provided
 - checks for lightweight Celo evidence in repo contents
 - validates optional wallet address format

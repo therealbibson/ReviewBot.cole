@@ -97,7 +97,6 @@ export interface RepoSnapshot {
     hasTests: boolean;
     hasCI: boolean;
     hasDocker: boolean;
-    hasEnvExample: boolean;
     mentionsCelo: boolean;
     mentionsAskBot: boolean;
     likelyStack: string[];
