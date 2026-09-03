@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReviewBot.Celo Results</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <nav class="navbar">
+        <div class="brand-block">
+          <p class="brand-kicker">ReviewBot.Celo</p>
+          <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
+        </div>
+        <div class="nav-links">
+          <a href="/">Review</a>
+          <a class="active" href="/results">Results</a>
+          <a href="/how-it-works">How it works</a>
+        </div>
+      </nav>
+
+      <section class="hero-card compact-hero">
+        <div class="hero-copy-block">
+          <p class="eyebrow">Review results</p>
+          <h1>Inspect scores, findings, and evidence.</h1>
+          <p class="hero-copy">Run a review from the Review page, then inspect the generated report here.</p>
+        </div>
+      </section>
+
+      <section class="panel hidden status-panel" id="status-panel">
+        <div class="status-row">
+          <div>
+            <p class="eyebrow">Review status</p>
+            <h2>What’s happening now</h2>
+          </div>
+          <div class="status-indicator" aria-hidden="true"></div>
+        </div>
+        <p id="status-message">No review loaded yet.</p>
+      </section>
+
+      <section class="panel" id="result-panel">
+        <div class="result-header">
+          <div>
+            <p class="eyebrow">Review result</p>
+            <h2 id="result-title">No review yet</h2>
+            <p id="result-summary" class="section-copy">Run a review on the Review page to populate this screen.</p>
+          </div>
+          <div class="score-card large-score-card">
+            <span>Overall score</span>
+            <strong id="overall-score">--</strong>
+          </div>
+        </div>
+
+        <div class="metrics-grid" id="metrics-grid"></div>
+
+        <div class="result-columns">
+          <section class="subpanel">
+            <h3>What works</h3>
+            <ul id="works-list" class="bullet-list"></ul>
+          </section>
+          <section class="subpanel">
+            <h3>What is broken</h3>
+            <ul id="broken-list" class="bullet-list"></ul>
+          </section>
+        </div>
+
+        <section class="subpanel">
+          <h3>Findings</h3>
+          <div id="findings-list" class="stack"></div>
+        </section>
+
+        <section class="subpanel">
+          <h3>Evidence</h3>
+          <div id="evidence-list" class="stack"></div>
+        </section>
+
+        <section class="subpanel">
+          <h3>Prioritized improvement plan</h3>
+          <ol id="plan-list" class="plan-list"></ol>
+        </section>
+
+        <section class="subpanel">
+          <h3>Markdown report</h3>
+          <pre id="markdown-report"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

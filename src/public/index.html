@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReviewBot.Celo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <nav class="navbar">
+        <div class="brand-block">
+          <p class="brand-kicker">ReviewBot.Celo</p>
+          <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
+        </div>
+        <div class="nav-links">
+          <a class="active" href="/">Review</a>
+          <a href="/results">Results</a>
+          <a href="/how-it-works">How it works</a>
+        </div>
+      </nav>
+
+      <section class="hero-card">
+        <div class="hero-copy-block">
+          <p class="eyebrow">User testing for the bot economy</p>
+          <h1>Review agent projects with evidence, not vibes.</h1>
+          <p class="hero-copy">
+            ReviewBot.Celo inspects a project’s repository, runtime behavior, and Celo signals, then turns what it actually finds into a structured review with severity, fixes, and a prioritized plan.
+          </p>
+          <div class="hero-actions">
+            <span class="primary-link">Start a review</span>
+            <span class="hero-note">Built for AskBots. Attribution-aware for Celo.</span>
+          </div>
+        </div>
+
+        <div class="hero-sidecard">
+          <p class="sidecard-label">What the reviewer returns</p>
+          <ul class="clean-list">
+            <li>What works</li>
+            <li>What is broken</li>
+            <li>Evidence for each claim</li>
+            <li>Severity and concrete fixes</li>
+            <li>A score and improvement roadmap</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="strip-grid">
+        <article class="strip-card">
+          <p class="strip-title">Repository review</p>
+          <p>Checks docs, engineering signals, tests, CI, and implementation clues.</p>
+        </article>
+        <article class="strip-card">
+          <p class="strip-title">AskBots-aware</p>
+          <p>Uses the configured backend defaults without exposing advanced setup in the UI.</p>
+        </article>
+        <article class="strip-card">
+          <p class="strip-title">Celo-aware</p>
+          <p>Keeps attribution constraints in scope and surfaces chain integration gaps.</p>
+        </article>
+      </section>
+
+      <section class="content-grid single-column">
+        <section class="panel form-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Start a review</p>
+              <h2>Submit the project you want reviewed</h2>
+            </div>
+            <p class="section-copy">
+              Enter the project basics below. AskBots connectivity is configured from the backend environment, so the interface stays simple.
+            </p>
+          </div>
+
+          <form id="review-form" class="review-form">
+            <div class="field-grid two-up">
+              <label class="field-card">
+                <span class="field-label">Project name</span>
+                <input type="text" name="projectName" placeholder="ReviewBot.Celo" />
+                <small>Optional, but useful for cleaner reports.</small>
+              </label>
+
+              <label class="field-card">
+                <span class="field-label">Wallet address</span>
+                <input type="text" name="walletAddress" placeholder="0x..." />
+                <small>Optional. Used for Celo-related checks.</small>
+              </label>
+            </div>
+
+            <label class="field-card">
+              <span class="field-label">GitHub repo URL</span>
+              <input type="url" name="repoUrl" placeholder="https://github.com/owner/repo" required />
+              <small>This is the primary source of technical evidence.</small>
+            </label>
+
+            <label class="field-card">
+              <span class="field-label">Review notes</span>
+              <textarea name="notes" rows="4" placeholder="What should be verified? Which claims matter most? What risks should the reviewer look for?"></textarea>
+              <small>Optional context to make the review sharper.</small>
+            </label>
+
+            <button type="submit" id="submit-button" class="primary-button">Generate review</button>
+          </form>
+        </section>
+
+        <section class="panel hidden status-panel" id="status-panel">
+          <div class="status-row">
+            <div>
+              <p class="eyebrow">Review status</p>
+              <h2>What’s happening now</h2>
+            </div>
+            <div class="status-indicator" aria-hidden="true"></div>
+          </div>
+          <p id="status-message">Preparing review…</p>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
