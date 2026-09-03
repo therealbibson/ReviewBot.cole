@@ -31,7 +31,7 @@
             ReviewBot.Celo inspects a project’s repository, runtime behavior, and Celo signals, then turns what it actually finds into a structured review with severity, fixes, and a prioritized plan.
           </p>
           <div class="hero-actions">
-            <span class="primary-link">Start a review</span>
+            <a class="primary-link" href="#review-form">Start a review</a>
             <span class="hero-note">Built for AskBots. Attribution-aware for Celo.</span>
           </div>
         </div>
@@ -79,7 +79,7 @@
             <div class="field-grid two-up">
               <label class="field-card">
                 <span class="field-label">Project name</span>
-                <input type="text" name="projectName" placeholder="ReviewBot.Celo" />
+                <input type="text" name="projectName" />
                 <small>Optional, but useful for cleaner reports.</small>
               </label>
 
@@ -92,7 +92,7 @@
 
             <label class="field-card">
               <span class="field-label">GitHub repo URL</span>
-              <input type="url" name="repoUrl" placeholder="https://github.com/owner/repo" required />
+              <input type="url" name="repoUrl" required />
               <small>This is the primary source of technical evidence.</small>
             </label>
 

@@ -60,6 +60,10 @@ app.get('/how-it-works', (_req: Request, res: Response) => {
   res.sendFile(join(process.cwd(), 'src/public/how-it-works.html'));
 });
 
+app.get('/markdown-report', (_req: Request, res: Response) => {
+  res.sendFile(join(process.cwd(), 'src/public/markdown-report.html'));
+});
+
 app.post('/review', async (req: Request, res: Response) => {
   if (!attributionTag) {
     res.status(503).json({

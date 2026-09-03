@@ -23,69 +23,69 @@
         </div>
       </nav>
 
-      <section class="hero-card compact-hero">
-        <div class="hero-copy-block">
-          <p class="eyebrow">Review results</p>
-          <h1>Inspect scores, findings, and evidence.</h1>
-          <p class="hero-copy">Run a review from the Review page, then inspect the generated report here.</p>
-        </div>
-      </section>
-
-      <section class="panel hidden status-panel" id="status-panel">
-        <div class="status-row">
+      <section class="hero-card compact-hero results-flow">
+        <div class="results-topline">
           <div>
-            <p class="eyebrow">Review status</p>
-            <h2>What’s happening now</h2>
+            <p class="eyebrow">Review results</p>
+            <h1 id="result-title">No review yet</h1>
+            <p id="result-summary" class="hero-copy">Run a review on the Review page to populate this screen.</p>
           </div>
-          <div class="status-indicator" aria-hidden="true"></div>
-        </div>
-        <p id="status-message">No review loaded yet.</p>
-      </section>
 
-      <section class="panel" id="result-panel">
-        <div class="result-header">
-          <div>
-            <p class="eyebrow">Review result</p>
-            <h2 id="result-title">No review yet</h2>
-            <p id="result-summary" class="section-copy">Run a review on the Review page to populate this screen.</p>
-          </div>
-          <div class="score-card large-score-card">
-            <span>Overall score</span>
-            <strong id="overall-score">--</strong>
+          <div class="results-topline-side">
+            <div class="score-inline">
+              <span class="score-label">Overall score</span>
+              <strong id="overall-score">--</strong>
+            </div>
+            <div class="safety-indicator" id="safety-indicator">
+              <span class="safety-label">Safety status</span>
+              <strong id="safety-status">Unknown</strong>
+              <p id="safety-summary">Run a review to determine whether the agent looks safe, risky, or unsafe.</p>
+            </div>
           </div>
         </div>
 
-        <div class="metrics-grid" id="metrics-grid"></div>
-
-        <div class="result-columns">
-          <section class="subpanel">
-            <h3>What works</h3>
-            <ul id="works-list" class="bullet-list"></ul>
-          </section>
-          <section class="subpanel">
-            <h3>What is broken</h3>
-            <ul id="broken-list" class="bullet-list"></ul>
-          </section>
-        </div>
-
-        <section class="subpanel">
-          <h3>Findings</h3>
-          <div id="findings-list" class="stack"></div>
+        <section class="panel hidden status-panel" id="status-panel">
+          <div class="status-row">
+            <div>
+              <p class="eyebrow">Review status</p>
+              <h2>What’s happening now</h2>
+            </div>
+            <div class="status-indicator" aria-hidden="true"></div>
+          </div>
+          <p id="status-message">No review loaded yet.</p>
         </section>
 
-        <section class="subpanel">
-          <h3>Evidence</h3>
-          <div id="evidence-list" class="stack"></div>
-        </section>
+        <section class="metrics-grid metrics-inline" id="metrics-grid"></section>
 
-        <section class="subpanel">
-          <h3>Prioritized improvement plan</h3>
-          <ol id="plan-list" class="plan-list"></ol>
-        </section>
+        <section class="results-text-flow">
+          <div class="flow-block">
+            <h2>What works</h2>
+            <ul id="works-list" class="bullet-list flow-list"></ul>
+          </div>
 
-        <section class="subpanel">
-          <h3>Markdown report</h3>
-          <pre id="markdown-report"></pre>
+          <div class="flow-block">
+            <h2>What is broken</h2>
+            <ul id="broken-list" class="bullet-list flow-list"></ul>
+          </div>
+
+          <div class="flow-block">
+            <h2>Findings</h2>
+            <div id="findings-list" class="flow-stack"></div>
+          </div>
+
+          <div class="flow-block">
+            <h2>Evidence</h2>
+            <div id="evidence-list" class="flow-stack"></div>
+          </div>
+
+          <div class="flow-block">
+            <h2>Prioritized improvement plan</h2>
+            <ol id="plan-list" class="plan-list flow-list"></ol>
+          </div>
+
+          <div class="flow-block">
+            <a class="primary-link report-link" href="/markdown-report">Open markdown report →</a>
+          </div>
         </section>
       </section>
     </main>

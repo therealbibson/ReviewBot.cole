@@ -63,7 +63,7 @@ function severityPenalty(severity: 'critical' | 'high' | 'medium' | 'low'): numb
 
 function categorySummary(category: Category, score: number): string {
   const tier = score >= 81 ? 'strong' : score >= 61 ? 'solid' : score >= 41 ? 'partial' : score >= 21 ? 'weak' : 'critical';
-  return `${labelForCategory(category)} is ${tier} based on current collected evidence.`;
+  return `${labelForCategory(category)} is ${tier}.`;
 }
 
 function labelForCategory(category: Category): string {

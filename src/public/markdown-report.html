@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReviewBot.Celo Markdown Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <nav class="navbar">
+        <div class="brand-block">
+          <p class="brand-kicker">ReviewBot.Celo</p>
+          <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
+        </div>
+        <div class="nav-links">
+          <a href="/">Review</a>
+          <a href="/results">Results</a>
+          <a href="/how-it-works">How it works</a>
+        </div>
+      </nav>
+
+      <section class="hero-card compact-hero results-flow">
+        <div>
+          <p class="eyebrow">Markdown report</p>
+          <h1 id="markdown-title">No report yet</h1>
+          <p class="hero-copy" id="markdown-summary">Generate a review first, then open the markdown report from the Results page.</p>
+        </div>
+
+        <section class="flow-block">
+          <a class="primary-link report-link" href="/results">← Back to results</a>
+          <pre id="markdown-report"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

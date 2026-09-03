@@ -6,6 +6,9 @@ const resultPanel = document.getElementById('result-panel');
 const resultTitle = document.getElementById('result-title');
 const resultSummary = document.getElementById('result-summary');
 const overallScore = document.getElementById('overall-score');
+const safetyIndicator = document.getElementById('safety-indicator');
+const safetyStatus = document.getElementById('safety-status');
+const safetySummary = document.getElementById('safety-summary');
 const metricsGrid = document.getElementById('metrics-grid');
 const worksList = document.getElementById('works-list');
 const brokenList = document.getElementById('broken-list');
@@ -13,6 +16,8 @@ const findingsList = document.getElementById('findings-list');
 const evidenceList = document.getElementById('evidence-list');
 const planList = document.getElementById('plan-list');
 const markdownReport = document.getElementById('markdown-report');
+const markdownTitle = document.getElementById('markdown-title');
+const markdownSummary = document.getElementById('markdown-summary');
 
 void loadHealth();
 void hydrateStoredReport();
@@ -60,23 +65,50 @@ function buildPayload(formData) {
 }
 
 function hydrateStoredReport() {
+  const report = readStoredReport();
+
+  if (markdownTitle && markdownSummary && markdownReport) {
+    hydrateMarkdownPage(report);
+    return;
+  }
+
   if (!resultTitle || !metricsGrid) {
     return;
   }
 
-  const stored = sessionStorage.getItem('reviewbot:last-report');
-  if (!stored) {
+  if (!report) {
     renderEmptyResults();
     return;
   }
 
+  renderReport(report);
+  if (statusPanel) statusPanel.classList.remove('hidden');
+  if (statusMessage) statusMessage.textContent = 'Showing the most recent generated review.';
+}
+
+function hydrateMarkdownPage(report) {
+  if (!report) {
+    if (markdownTitle) markdownTitle.textContent = 'No report yet';
+    if (markdownSummary) markdownSummary.textContent = 'Generate a review first, then open the markdown report from the Results page.';
+    if (markdownReport) markdownReport.textContent = '';
+    return;
+  }
+
+  if (markdownTitle) markdownTitle.textContent = `${report.project.name} markdown report`;
+  if (markdownSummary) markdownSummary.textContent = report.summary || 'Structured review report.';
+  if (markdownReport) markdownReport.textContent = report.markdown || '';
+}
+
+function readStoredReport() {
+  const stored = sessionStorage.getItem('reviewbot:last-report');
+  if (!stored) {
+    return null;
+  }
+
   try {
-    const report = JSON.parse(stored);
-    renderReport(report);
-    if (statusPanel) statusPanel.classList.remove('hidden');
-    if (statusMessage) statusMessage.textContent = 'Showing the most recent generated review.';
+    return JSON.parse(stored);
   } catch {
-    renderEmptyResults();
+    return null;
   }
 }
 
@@ -87,7 +119,11 @@ function persistReport(report) {
 function renderReport(report) {
   if (resultTitle) resultTitle.textContent = report.project.name;
   if (resultSummary) resultSummary.textContent = report.summary || 'Evidence-backed review generated.';
-  if (overallScore) overallScore.textContent = String(report.scores.overall);
+  if (overallScore) {
+    overallScore.textContent = String(report.scores.overall);
+    overallScore.className = scoreToneClass(report.scores.overall);
+  }
+  renderSafetyIndicator(report);
   if (metricsGrid) {
     metricsGrid.replaceChildren(
       metricCard('Usefulness', report.scores.usefulness.score, report.scores.usefulness.summary),
@@ -104,20 +140,62 @@ function renderReport(report) {
   if (findingsList) renderFindings(report.findings || []);
   if (evidenceList) renderEvidence(report.evidence || []);
   if (planList) renderPlan(report.improvementPlan || []);
-  if (markdownReport) markdownReport.textContent = report.markdown || '';
 }
 
 function renderEmptyResults() {
   if (resultTitle) resultTitle.textContent = 'No review yet';
   if (resultSummary) resultSummary.textContent = 'Run a review on the Review page to populate this screen.';
-  if (overallScore) overallScore.textContent = '--';
+  if (overallScore) {
+    overallScore.textContent = '--';
+    overallScore.className = '';
+  }
+  renderEmptySafetyIndicator();
   if (metricsGrid) metricsGrid.replaceChildren();
   if (worksList) renderList(worksList, []);
   if (brokenList) renderList(brokenList, []);
   if (findingsList) renderFindings([]);
   if (evidenceList) renderEvidence([]);
   if (planList) renderPlan([]);
-  if (markdownReport) markdownReport.textContent = '';
+}
+
+function renderSafetyIndicator(report) {
+  if (!safetyIndicator || !safetyStatus || !safetySummary) {
+    return;
+  }
+
+  safetyIndicator.classList.remove('safe', 'caution', 'unsafe');
+
+  const safetyScore = Number(report?.scores?.safety?.score ?? 0);
+  const safetyFindings = (report?.findings ?? []).filter((finding) => finding.category === 'safety');
+  const hasCriticalSafety = safetyFindings.some((finding) => finding.severity === 'critical' || finding.severity === 'high');
+
+  if (hasCriticalSafety || safetyScore < 45) {
+    safetyIndicator.classList.add('unsafe');
+    safetyStatus.textContent = 'Unsafe';
+    safetySummary.textContent = 'This review found meaningful safety risk or weak trust boundaries that should be addressed before relying on the agent.';
+    return;
+  }
+
+  if (safetyScore < 70) {
+    safetyIndicator.classList.add('caution');
+    safetyStatus.textContent = 'Needs caution';
+    safetySummary.textContent = 'The agent is not clearly unsafe, but there are enough safety gaps that careful review and fixes are still needed.';
+    return;
+  }
+
+  safetyIndicator.classList.add('safe');
+  safetyStatus.textContent = 'Looks safe';
+  safetySummary.textContent = 'The current review suggests the agent is in a relatively healthy safety range, though further manual verification is always wise.';
+}
+
+function renderEmptySafetyIndicator() {
+  if (!safetyIndicator || !safetyStatus || !safetySummary) {
+    return;
+  }
+
+  safetyIndicator.classList.remove('safe', 'caution', 'unsafe');
+  safetyStatus.textContent = 'Unknown';
+  safetySummary.textContent = 'Run a review to determine whether the agent looks safe, risky, or unsafe.';
 }
 
 function renderList(container, items) {
@@ -180,10 +258,26 @@ function metricCard(label, value, summary) {
   div.className = 'metric-card';
   div.innerHTML = `
     <span>${escapeHtml(label)}</span>
-    <strong>${escapeHtml(String(value))}</strong>
+    <strong class="${escapeHtml(scoreToneClass(Number(value)))}">${escapeHtml(String(value))}</strong>
     <p>${escapeHtml(summary || '')}</p>
   `;
   return div;
+}
+
+function scoreToneClass(value) {
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+
+  if (value >= 70) {
+    return 'score-good';
+  }
+
+  if (value >= 45) {
+    return 'score-caution';
+  }
+
+  return 'score-bad';
 }
 
 function emptyStateCard(title, message) {
