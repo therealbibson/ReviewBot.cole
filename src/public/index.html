@@ -16,9 +16,10 @@
           <p class="brand-kicker">ReviewBot.Celo</p>
           <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
         </div>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation menu">⋯</button>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation menu"><svg class="icon-open" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg><svg class="icon-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
         <div class="nav-links" id="primary-nav">
-          <a class="active" href="/">Review</a>
+          <a class="active" href="/">Home</a>
+          <a href="/review">Start a Review</a>
           <a href="/results">Results</a>
           <a href="/how-it-works">How it works</a>
         </div>
@@ -27,12 +28,12 @@
       <section class="hero-card">
         <div class="hero-copy-block">
           <p class="eyebrow">On-chain auditor for AI agents on Celo</p>
-          <h1>Test if an agent is useful, safe, and economically viable before you trust it with your money.</h1>
+          <h1>Trust agents you can verify.</h1>
           <p class="hero-copy">
             ReviewBot.Celo inspects an agent's repository, runtime behavior, and real on-chain wallet activity on Celo, then turns what it actually finds into a structured audit with severity, evidence, and a clear trust verdict.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="#review-form">Audit an agent</a>
+            <a class="primary-link" href="/review">Audit an agent</a>
             <span class="hero-note">Built for AskBots. Attribution-aware for Celo.</span>
           </div>
         </div>
@@ -62,61 +63,6 @@
           <p class="strip-title">Economically viable</p>
           <p>Verifies real on-chain balance and transaction history on Celo, not just claims in a README.</p>
         </article>
-      </section>
-
-      <section class="content-grid single-column">
-        <section class="panel form-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Start a review</p>
-              <h2>Submit the project you want reviewed</h2>
-            </div>
-            <p class="section-copy">
-              Enter the project basics below. AskBots connectivity is configured from the backend environment, so the interface stays simple.
-            </p>
-          </div>
-
-          <form id="review-form" class="review-form">
-            <div class="field-grid two-up">
-              <label class="field-card">
-                <span class="field-label">Project name</span>
-                <input type="text" name="projectName" />
-                <small>Optional, but useful for cleaner reports.</small>
-              </label>
-
-              <label class="field-card">
-                <span class="field-label">Agent's Celo wallet address</span>
-                <input type="text" name="walletAddress" placeholder="0x..." />
-                <small>Required to verify real on-chain balance and activity before trusting this agent.</small>
-              </label>
-            </div>
-
-            <label class="field-card">
-              <span class="field-label">GitHub repo URL</span>
-              <input type="url" name="repoUrl" required />
-              <small>This is the primary source of technical evidence.</small>
-            </label>
-
-            <label class="field-card">
-              <span class="field-label">Review notes</span>
-              <textarea name="notes" rows="4" placeholder="What should be verified? Which claims matter most? What risks should the reviewer look for?"></textarea>
-              <small>Optional context to make the review sharper.</small>
-            </label>
-
-            <button type="submit" id="submit-button" class="primary-button">Generate review</button>
-          </form>
-        </section>
-
-        <section class="panel hidden status-panel" id="status-panel">
-          <div class="status-row">
-            <div>
-              <p class="eyebrow">Review status</p>
-              <h2>What’s happening now</h2>
-            </div>
-            <div class="status-indicator" aria-hidden="true"></div>
-          </div>
-          <p id="status-message">Preparing review…</p>
-        </section>
       </section>
     </main>
 

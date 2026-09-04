@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Start a Review - ReviewBot.Celo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <nav class="navbar">
+        <div class="brand-block">
+          <p class="brand-kicker">ReviewBot.Celo</p>
+          <p class="brand-subtitle">Evidence-based review system for Celo and AskBots</p>
+        </div>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation menu"><svg class="icon-open" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg><svg class="icon-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+        <div class="nav-links" id="primary-nav">
+          <a href="/">Home</a>
+          <a class="active" href="/review">Start a Review</a>
+          <a href="/results">Results</a>
+          <a href="/how-it-works">How it works</a>
+        </div>
+      </nav>
+
+      <section class="hero-card compact-hero">
+        <div class="hero-copy-block">
+          <p class="eyebrow">Audit an AI agent</p>
+          <h1>Submit your project for review</h1>
+          <p class="hero-copy">
+            Enter the project basics below. ReviewBot.Celo will inspect the repository, verify on-chain activity on Celo, and generate a comprehensive audit report with evidence-backed findings and a trust verdict.
+          </p>
+        </div>
+      </section>
+
+      <section class="content-grid single-column">
+        <section class="panel form-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Project information</p>
+              <h2>What would you like us to review?</h2>
+            </div>
+            <p class="section-copy">
+              Provide the essentials below. We'll handle the rest from the backend, keeping your experience simple and focused.
+            </p>
+          </div>
+
+          <form id="review-form" class="review-form">
+            <div class="field-grid two-up">
+              <label class="field-card">
+                <span class="field-label">Project name</span>
+                <input type="text" name="projectName" />
+                <small>Optional, but useful for cleaner reports.</small>
+              </label>
+
+              <label class="field-card">
+                <span class="field-label">Agent's Celo wallet address</span>
+                <input type="text" name="walletAddress" placeholder="0x..." />
+                <small>Required to verify real on-chain balance and activity before trusting this agent.</small>
+              </label>
+            </div>
+
+            <label class="field-card">
+              <span class="field-label">GitHub repo URL</span>
+              <input type="url" name="repoUrl" required />
+              <small>This is the primary source of technical evidence.</small>
+            </label>
+
+            <label class="field-card">
+              <span class="field-label">Review notes</span>
+              <textarea name="notes" rows="4" placeholder="What should be verified? Which claims matter most? What risks should the reviewer look for?"></textarea>
+              <small>Optional context to make the review sharper.</small>
+            </label>
+
+            <button type="submit" id="submit-button" class="primary-button">Generate review</button>
+          </form>
+        </section>
+
+        <section class="panel hidden status-panel" id="status-panel">
+          <div class="status-row">
+            <div>
+              <p class="eyebrow">Review status</p>
+              <h2>What's happening now</h2>
+            </div>
+            <div class="status-indicator" aria-hidden="true"></div>
+          </div>
+          <p id="status-message">Preparing review…</p>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -53,6 +53,10 @@ app.get('/', (_req: Request, res: Response) => {
   res.sendFile(join(process.cwd(), 'src/public/index.html'));
 });
 
+app.get('/review', (_req: Request, res: Response) => {
+  res.sendFile(join(process.cwd(), 'src/public/review.html'));
+});
+
 app.get('/results', (_req: Request, res: Response) => {
   res.sendFile(join(process.cwd(), 'src/public/results.html'));
 });
