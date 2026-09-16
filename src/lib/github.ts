@@ -29,7 +29,7 @@ export async function fetchGitHubJson<T>(path: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+    throw new Error(`GitHub API returned ${response.status} ${response.statusText}${response.status === 404 ? '. Make sure the repository URL is correct and the repo is public.' : '.'}`);
   }
 
   return (await response.json()) as T;

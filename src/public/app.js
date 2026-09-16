@@ -51,7 +51,7 @@ if (form) {
       window.location.href = '/results';
     } catch (error) {
       if (statusMessage) {
-        statusMessage.textContent = error instanceof Error ? error.message : 'Unexpected error';
+        statusMessage.textContent = friendlyErrorMessage(error instanceof Error ? error.message : 'Unexpected error');
       }
     } finally {
       if (submitButton) submitButton.disabled = false;
@@ -72,13 +72,20 @@ function setupMobileNav() {
 }
 
 function buildPayload(formData) {
+  let projectName = stringOrUndefined(formData.get('projectName'));
+  const repoUrl = String(formData.get('repoUrl'));
+  if (!projectName) {
+    const m = repoUrl.match(/github\.com\/[^/]+\/[^/]+/);
+    if (m) projectName = m[2].replace(/\.git$/, '');
+  }
   return {
-    projectName: stringOrUndefined(formData.get('projectName')),
-    repoUrl: String(formData.get('repoUrl')),
+    projectName,
+    repoUrl,
     walletAddress: stringOrUndefined(formData.get('walletAddress')),
     notes: stringOrUndefined(formData.get('notes'))
   };
 }
+
 
 function hydrateStoredReport() {
   const report = readStoredReport();
@@ -134,6 +141,12 @@ function persistReport(report) {
 
 function renderReport(report) {
   if (resultTitle) resultTitle.textContent = report.project.name;
+  const repoLinkBlock = document.getElementById('repo-link-block');
+  const repoLink = document.getElementById('repo-link');
+  if (repoLinkBlock && repoLink && report.project.repoUrl) {
+    repoLink.href = report.project.repoUrl;
+    repoLinkBlock.style.display = '';
+  }
   if (resultSummary) resultSummary.textContent = report.summary || 'Evidence-backed review generated.';
   if (overallScore) {
     overallScore.textContent = String(report.scores.overall);
@@ -307,6 +320,14 @@ function emptyStateCard(title, message) {
   article.className = 'evidence-card';
   article.innerHTML = `<h4>${escapeHtml(title)}</h4><p>${escapeHtml(message)}</p>`;
   return article;
+}
+
+
+function friendlyErrorMessage(raw) {
+  if (raw.includes('404')) return 'Repository not found. Make sure the URL is correct and the repo is public.';
+  if (raw.includes('403')) return 'GitHub API rate limit reached. Please wait a moment and try again.';
+  if (raw.includes('503')) return 'The review service is not ready yet. Please try again in a moment.';
+  return raw;
 }
 
 function stringOrUndefined(value) {

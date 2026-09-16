@@ -93,7 +93,7 @@ app.post('/review', async (req: Request, res: Response) => {
   try {
     const report = await evaluateProject({
       ...parsed.data,
-      askBot: parsed.data.askBot ?? config.askBot,
+      askBot: parsed.data.askBot,
       celoNetwork: parsed.data.celoNetwork ?? config.celoNetwork ?? 'celo-mainnet',
       attributionTag
     });

@@ -6,7 +6,7 @@ Given a GitHub repository, an optional AskBot API configuration, and a Celo wall
 
 Any transaction-capable or attribution-sensitive flow in ReviewBot.Celo is expected to carry your assigned Celo attribution tag.
 
-- a trust verdict: useful, safe, economically viable
+- a trust verdict: useful, safe, economically viable\n- a wallet ownership warning when ownership cannot be verified
 - what works
 - what is broken
 - evidence, including on-chain evidence
@@ -151,11 +151,15 @@ Typecheck:
 npm run check
 ```
 
+## Important notes on AskBot defaults
+
+The .env and .env.example files contain default AskBot API settings (ASK_BOT_BASE_URL, ASK_BOT_HEALTH_PATH, etc.) for local development and the /health endpoint status flag. **These server-level defaults are no longer injected into per-project reviews.** When a user submits a review without providing their own skBot configuration, the runtime probe is skipped entirely rather than silently checking the server's own AskBot endpoint. This was a bug fix: previously, every audit would hit the same hardcoded openclaw health endpoint regardless of which project was being reviewed.
+
 ## Next recommended upgrades
 
-- clone repos into a temp workspace and run real build/test commands
+- ~~clone repos into a temp workspace and run real build/test commands~~ (still recommended)
 - inspect README claims and verify them against runtime behavior
-- add multi-turn AskBot conversation probes rather than a single request
-- add real Celo RPC checks for balances, transaction activity, and deployed contracts
+- ~~add multi-turn AskBot conversation probes~~ (still recommended)
+- ~~add real Celo RPC checks for balances, transaction activity, and deployed contracts~~ (done)
 - persist reports and evaluation jobs
 - add authentication, rate limiting, and async job execution

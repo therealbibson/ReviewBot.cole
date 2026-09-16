@@ -113,6 +113,18 @@ export function generateFindings(context: EvaluationContext): Finding[] {
   }
 
 
+
+  if (celo.providedWallet && celo.validWalletFormat && celo.onChain.checked) {
+    findings.push({
+      title: 'Wallet ownership not verified',
+      severity: 'high',
+      category: 'safety',
+      summary: 'The wallet balance and activity were checked, but ReviewBot did not verify that this wallet actually belongs to the project submitter. Anyone can provide any public wallet address.',
+      evidence: ['No signature or on-chain registration was used to prove the submitter controls this wallet.'],
+      fix: 'Require a signed message from the wallet (e.g. personal_sign) or cross-check the wallet against a registered agent address on askbots.ai before trusting it.'
+    });
+  }
+
   if (!repo.signals.hasCI) {
     findings.push({
       title: 'No CI workflow detected',
