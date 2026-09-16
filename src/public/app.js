@@ -22,7 +22,13 @@ const markdownReport = document.getElementById('markdown-report');
 const markdownTitle = document.getElementById('markdown-title');
 const markdownSummary = document.getElementById('markdown-summary');
 
+const signOwnershipBtn = document.getElementById('sign-ownership-btn');
+const walletSignatureBadge = document.getElementById('wallet-signature-badge');
+const walletSignatureText = document.getElementById('wallet-signature-text');
+
 setupMobileNav();
+setupFormDraftPersistence();
+setupWalletProofButton();
 void loadHealth();
 void hydrateStoredReport();
 
@@ -71,21 +77,165 @@ function setupMobileNav() {
   });
 }
 
+function setupFormDraftPersistence() {
+  if (!form) return;
+
+  const DRAFT_KEY = 'reviewbot:form-draft';
+
+  // Restore draft if present
+  try {
+    const storedDraft = sessionStorage.getItem(DRAFT_KEY);
+    if (storedDraft) {
+      const draft = JSON.parse(storedDraft);
+      Object.entries(draft).forEach(([name, val]) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field && typeof val === 'string' && !field.value) {
+          field.value = val;
+        }
+      });
+      if (draft.walletSignature && draft.walletSignatureMessage) {
+        setSignatureInputs(draft.walletSignature, draft.walletSignatureMessage);
+      }
+    }
+  } catch {
+    // Ignore draft restoration failures
+  }
+
+  // Auto-save input changes
+  form.addEventListener('input', () => {
+    try {
+      const formData = new FormData(form);
+      const draftObj = {};
+      for (const [key, val] of formData.entries()) {
+        if (typeof val === 'string' && val.trim()) {
+          draftObj[key] = val.trim();
+        }
+      }
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draftObj));
+    } catch {
+      // Ignore draft storage quota error
+    }
+  });
+}
+
+function setupWalletProofButton() {
+  if (!signOwnershipBtn) return;
+
+  signOwnershipBtn.addEventListener('click', async () => {
+    const walletInput = form?.querySelector('[name="walletAddress"]');
+    let address = walletInput ? walletInput.value.trim() : '';
+
+    if (typeof window.ethereum === 'undefined') {
+      if (walletSignatureText) {
+        walletSignatureText.textContent = '❌ Web3 wallet not detected in browser. Please install MetaMask, MiniPay, or use a Web3 browser.';
+        walletSignatureText.style.color = '#ef4444';
+      }
+      return;
+    }
+
+    try {
+      if (walletSignatureText) {
+        walletSignatureText.textContent = 'Connecting to Web3 wallet…';
+        walletSignatureText.style.color = '';
+      }
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No account returned from Web3 wallet.');
+      }
+
+      const walletAccount = accounts[0];
+      if (walletInput) {
+        walletInput.value = walletAccount;
+        address = walletAccount;
+      }
+
+      const timestamp = new Date().toISOString();
+      const challengeMessage = `ReviewBot Celo Wallet Ownership Proof\nWallet: ${address}\nTimestamp: ${timestamp}`;
+
+      if (walletSignatureText) {
+        walletSignatureText.textContent = 'Please approve the personal_sign signature request in your wallet…';
+      }
+
+      let signature;
+      try {
+        signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [challengeMessage, address]
+        });
+      } catch {
+        // Retry with inverted param order if wallet expects [address, message]
+        signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [address, challengeMessage]
+        });
+      }
+
+      if (!signature) {
+        throw new Error('Signature was not returned.');
+      }
+
+      setSignatureInputs(signature, challengeMessage);
+
+      if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
+      if (walletSignatureText) {
+        walletSignatureText.textContent = '✓ Signature attached! ReviewBot will verify wallet ownership on-chain during analysis.';
+        walletSignatureText.style.color = '#10b981';
+      }
+    } catch (err) {
+      if (walletSignatureText) {
+        walletSignatureText.textContent = `❌ Signature failed: ${err instanceof Error ? err.message : 'User rejected signature.'}`;
+        walletSignatureText.style.color = '#ef4444';
+      }
+    }
+  });
+}
+
+function setSignatureInputs(signature, message) {
+  const sigInput = document.getElementById('walletSignature');
+  const msgInput = document.getElementById('walletSignatureMessage');
+  if (sigInput) sigInput.value = signature;
+  if (msgInput) msgInput.value = message;
+  if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
+}
+
 function buildPayload(formData) {
   let projectName = stringOrUndefined(formData.get('projectName'));
   const repoUrl = String(formData.get('repoUrl'));
   if (!projectName) {
-    const m = repoUrl.match(/github\.com\/[^/]+\/[^/]+/);
-    if (m) projectName = m[2].replace(/\.git$/, '');
+    const m = repoUrl.match(/github\.com\/[^/]+\/([^/]+)/);
+    if (m) projectName = m[1].replace(/\.git$/, '');
   }
-  return {
+
+  const payload = {
     projectName,
     repoUrl,
     walletAddress: stringOrUndefined(formData.get('walletAddress')),
+    walletSignature: stringOrUndefined(formData.get('walletSignature')),
+    walletSignatureMessage: stringOrUndefined(formData.get('walletSignatureMessage')),
     notes: stringOrUndefined(formData.get('notes'))
   };
-}
 
+  const askBotBaseUrl = stringOrUndefined(formData.get('askBotBaseUrl'));
+  if (askBotBaseUrl) {
+    const rawKeys = stringOrUndefined(formData.get('askBotExpectedKeys'));
+    const expectedResponseKeys = rawKeys
+      ? rawKeys.split(',').map((k) => k.trim()).filter(Boolean)
+      : undefined;
+
+    payload.askBot = {
+      baseUrl: askBotBaseUrl,
+      healthPath: stringOrUndefined(formData.get('askBotHealthPath')),
+      reviewPath: stringOrUndefined(formData.get('askBotReviewPath')),
+      method: (formData.get('askBotMethod') as string) === 'POST' ? 'POST' : 'GET',
+      authHeader: stringOrUndefined(formData.get('askBotAuthHeader')),
+      authToken: stringOrUndefined(formData.get('askBotAuthToken')),
+      expectedResponseKeys
+    };
+  }
+
+  return payload;
+}
 
 function hydrateStoredReport() {
   const report = readStoredReport();
@@ -322,10 +472,9 @@ function emptyStateCard(title, message) {
   return article;
 }
 
-
 function friendlyErrorMessage(raw) {
   if (raw.includes('404')) return 'Repository not found. Make sure the URL is correct and the repo is public.';
-  if (raw.includes('403')) return 'GitHub API rate limit reached. Please wait a moment and try again.';
+  if (raw.includes('rate limit') || raw.includes('403')) return 'GitHub API rate limit reached. Configure GITHUB_TOKEN in server .env or try again later.';
   if (raw.includes('503')) return 'The review service is not ready yet. Please try again in a moment.';
   return raw;
 }

@@ -1,3 +1,5 @@
+import { verifyMessage } from 'viem';
+
 export type CeloNetworkId = 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
 
 const RPC_URLS: Record<Exclude<CeloNetworkId, 'not-applicable'>, string> = {
@@ -62,6 +64,25 @@ export async function fetchOnChainWalletSnapshot(
       rpcUrl,
       error: error instanceof Error ? error.message : 'Unknown RPC failure'
     };
+  }
+}
+
+
+export async function verifyWalletSignature(
+  address: string,
+  message: string,
+  signature: string,
+  _network: CeloNetworkId
+): Promise<{ verified: boolean; recoveredAddress?: string; error?: string }> {
+  try {
+    const verified = await verifyMessage({
+      address: address as `0x${string}`,
+      message,
+      signature: signature as `0x${string}`
+    });
+    return { verified, recoveredAddress: address };
+  } catch (error) {
+    return { verified: false, error: error instanceof Error ? error.message : 'Signature verification failed' };
   }
 }
 

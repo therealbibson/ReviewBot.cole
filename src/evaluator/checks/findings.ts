@@ -10,7 +10,7 @@ export function generateFindings(context: EvaluationContext): Finding[] {
       severity: 'medium',
       category: 'usefulness',
       summary: 'The project does not expose basic onboarding or value explanation through a README.',
-      evidence: ['README.md was not found on main or master.'],
+      evidence: ['No README file was found on the repository default branch or common branches (main, master, develop, dev, trunk).'],
       fix: 'Add a README with setup, purpose, architecture, and demo instructions.'
     });
   }
@@ -114,13 +114,13 @@ export function generateFindings(context: EvaluationContext): Finding[] {
 
 
 
-  if (celo.providedWallet && celo.validWalletFormat && celo.onChain.checked) {
+  if (celo.providedWallet && celo.validWalletFormat && !celo.walletOwnershipVerified) {
     findings.push({
       title: 'Wallet ownership not verified',
       severity: 'high',
       category: 'safety',
-      summary: 'The wallet balance and activity were checked, but ReviewBot did not verify that this wallet actually belongs to the project submitter. Anyone can provide any public wallet address.',
-      evidence: ['No signature or on-chain registration was used to prove the submitter controls this wallet.'],
+      summary: 'The wallet balance and activity were checked, but the submitter did not prove they control this wallet. Provide a personal_sign signature to verify ownership, or cross-check against a registered agent address on askbots.ai.',
+      evidence: ['No wallet signature was provided. Submit a signed message (personal_sign) to verify wallet ownership.'],
       fix: 'Require a signed message from the wallet (e.g. personal_sign) or cross-check the wallet against a registered agent address on askbots.ai before trusting it.'
     });
   }

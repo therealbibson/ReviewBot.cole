@@ -97,7 +97,8 @@ function inferWhatWorks(context: EvaluationContext): string[] {
 
   if (context.celo.onChain.checked) {
     if ((context.celo.onChain.transactionCount ?? 0) > 0 || (context.celo.onChain.balanceCelo ?? 0) > 0) {
-      works.add('The provided wallet has on-chain balance or transaction history on Celo (ownership not verified).');
+      const ownershipStatus = context.celo.walletOwnershipVerified ? '(ownership verified via signature)' : '(ownership unverified)';
+      works.add(`The provided wallet has on-chain balance or transaction history on Celo ${ownershipStatus}.`);
     }
   }
 

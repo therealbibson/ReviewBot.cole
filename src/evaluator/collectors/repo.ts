@@ -1,4 +1,4 @@
-import { parseGitHubRepoUrl, fetchGitHubJson, fetchRawGitHubFile } from '../../lib/github.js';
+import { parseGitHubRepoUrl, fetchGitHubJson, fetchRawGitHubFile, type GitHubRepoDetails } from '../../lib/github.js';
 import type { EvidenceItem, RepoSnapshot, ReviewRequest } from '../types.js';
 
 interface GitHubTreeResponse {
@@ -8,14 +8,27 @@ interface GitHubTreeResponse {
 export async function collectRepoSnapshot(request: ReviewRequest, evidence: EvidenceItem[]): Promise<RepoSnapshot> {
   const { owner, repo } = parseGitHubRepoUrl(request.repoUrl);
 
+  let defaultBranch: string | undefined;
+  try {
+    const repoDetails = await fetchGitHubJson<GitHubRepoDetails>(`/repos/${owner}/${repo}`);
+    defaultBranch = repoDetails.default_branch;
+  } catch {
+    // If fetching repo details fails (e.g. scope limits), fall back silently to branch search
+  }
+
   const tree = await fetchGitHubJson<GitHubTreeResponse>(`/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`);
   const files = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
 
-  const readme =
-    (await fetchRawGitHubFile(owner, repo, 'README.md')) ??
-    (await fetchRawGitHubFile(owner, repo, 'readme.md'));
+  // Find exact README filename in tree files if present
+  const readmeFilePath = files.find((file) => /^readme(\.(md|markdown|txt|rst))?$/i.test(file)) ?? 'README.md';
 
-  const packageText = await fetchRawGitHubFile(owner, repo, 'package.json');
+  const readme =
+    (await fetchRawGitHubFile(owner, repo, readmeFilePath, defaultBranch)) ??
+    (readmeFilePath !== 'README.md' ? await fetchRawGitHubFile(owner, repo, 'README.md', defaultBranch) : undefined) ??
+    (await fetchRawGitHubFile(owner, repo, 'readme.md', defaultBranch));
+
+  const packageFilePath = files.find((file) => /^package\.json$/i.test(file)) ?? 'package.json';
+  const packageText = await fetchRawGitHubFile(owner, repo, packageFilePath, defaultBranch);
   const packageJson = packageText ? safeJsonParse(packageText) : undefined;
 
   const signals = {
@@ -30,7 +43,7 @@ export async function collectRepoSnapshot(request: ReviewRequest, evidence: Evid
   evidence.push({
     type: 'file',
     label: 'Repository inventory',
-    detail: `Indexed ${files.length} files from ${owner}/${repo}.`,
+    detail: `Indexed ${files.length} files from ${owner}/${repo}${defaultBranch ? ` (default branch: ${defaultBranch})` : ''}.`,
     source: request.repoUrl,
     status: 'pass'
   });
@@ -39,15 +52,15 @@ export async function collectRepoSnapshot(request: ReviewRequest, evidence: Evid
     evidence.push({
       type: 'file',
       label: 'README discovered',
-      detail: 'README file is present and available for claim verification.',
-      source: 'README.md',
+      detail: `README file (${readmeFilePath}) is present and available for claim verification.`,
+      source: readmeFilePath,
       status: 'pass'
     });
   } else {
     evidence.push({
       type: 'file',
       label: 'README missing',
-      detail: 'No README.md was found on main or master.',
+      detail: `No README was found on ${defaultBranch ? `default branch (${defaultBranch}) or ` : ''}common fallback branches (main, master, develop, dev, trunk).`,
       status: 'warn'
     });
   }

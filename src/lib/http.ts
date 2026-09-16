@@ -1,7 +1,11 @@
-export async function fetchText(url: string): Promise<{ status: number; body: string; contentType: string | null }> {
+export async function fetchText(
+  url: string,
+  headers?: Record<string, string>
+): Promise<{ status: number; body: string; contentType: string | null }> {
   const response = await fetch(url, {
     headers: {
-      'user-agent': 'reviewbot-celo/0.1'
+      'user-agent': 'reviewbot-celo/0.1',
+      ...(headers ?? {})
     }
   });
 

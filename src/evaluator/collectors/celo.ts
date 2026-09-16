@@ -1,4 +1,4 @@
-import { fetchOnChainWalletSnapshot } from '../../lib/celoRpc.js';
+import { fetchOnChainWalletSnapshot, verifyWalletSignature } from '../../lib/celoRpc.js';
 import type { CeloSnapshot, EvidenceItem, RepoSnapshot, ReviewRequest } from '../types.js';
 
 const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
@@ -35,6 +35,33 @@ export async function collectCeloSnapshot(
       type: 'heuristic',
       label: 'Weak Celo evidence',
       detail: 'The repository does not clearly mention Celo in README or package metadata.',
+      status: 'warn'
+    });
+  }
+
+  let walletOwnershipVerified = false;
+  if (request.walletSignature && request.walletSignatureMessage && validWalletFormat && request.walletAddress) {
+    const result = await verifyWalletSignature(
+      request.walletAddress,
+      request.walletSignatureMessage,
+      request.walletSignature,
+      network
+    );
+    walletOwnershipVerified = result.verified;
+    evidence.push({
+      type: 'http',
+      label: 'Wallet ownership verification',
+      detail: result.verified
+        ? `Wallet ownership verified: personal_sign signature matches ${request.walletAddress}.`
+        : `Wallet ownership verification failed: ${result.error ?? 'signature mismatch'}`,
+      source: result.recoveredAddress,
+      status: result.verified ? 'pass' : 'fail'
+    });
+  } else if (request.walletAddress) {
+    evidence.push({
+      type: 'heuristic',
+      label: 'Wallet ownership not verified',
+      detail: 'No wallet signature was provided - ownership could not be verified.',
       status: 'warn'
     });
   }
@@ -103,6 +130,7 @@ export async function collectCeloSnapshot(
     repoMentions,
     inferredNetworks,
     notes: buildNotes(request, validWalletFormat, inferredNetworks),
+    walletOwnershipVerified,
     onChain
   };
 }

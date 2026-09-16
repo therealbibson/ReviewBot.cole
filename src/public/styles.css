@@ -873,3 +873,108 @@ pre {
   }
 }
 
+/* Wallet Proof & AskBot Config Section Styles */
+.wallet-proof-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-faint, rgba(255, 255, 255, 0.05));
+  color: var(--text, #f3f4f6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent, #38bdf8);
+  color: var(--accent, #38bdf8);
+}
+
+.compact-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.signature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.signature-info {
+  margin-top: 6px;
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted, #9ca3af);
+  line-height: 1.4;
+}
+
+.askbot-details {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-faint, rgba(255, 255, 255, 0.02));
+  transition: border-color 0.2s ease;
+}
+
+.askbot-details[open] {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.askbot-summary {
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--surface-faint, rgba(255, 255, 255, 0.03));
+}
+
+.askbot-summary:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.askbot-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text, #f3f4f6);
+}
+
+.askbot-summary-sub {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted, #9ca3af);
+  margin-top: 2px;
+  margin-left: 26px;
+}
+
+.askbot-fields {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+

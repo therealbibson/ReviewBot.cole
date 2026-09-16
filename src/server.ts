@@ -34,6 +34,8 @@ const reviewRequestSchema = z.object({
   askBotUrl: z.string().url().optional(),
   askBot: askBotSchema.optional(),
   walletAddress: z.string().optional(),
+  walletSignature: z.string().min(1).optional(),
+  walletSignatureMessage: z.string().min(1).optional(),
   celoNetwork: z.enum(['celo-mainnet', 'celo-sepolia', 'not-applicable']).optional(),
   projectName: z.string().min(1).optional(),
   notes: z.string().max(5000).optional()
@@ -45,7 +47,9 @@ app.get('/health', (_req: Request, res: Response) => {
     service: 'reviewbot-celo',
     attributionTag,
     startupWarning,
-    askBotConfigured: Boolean(config.askBot)
+    askBotConfigured: Boolean(config.askBot),
+    serverDefaultAskBotConfigured: Boolean(config.askBot),
+    perReviewAskBotSupported: true
   });
 });
 

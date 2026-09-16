@@ -22,6 +22,8 @@ export interface ReviewRequest {
   askBotUrl?: string;
   askBot?: AskBotConfig;
   walletAddress?: string;
+  walletSignature?: string;
+  walletSignatureMessage?: string;
   celoNetwork?: 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
   projectName?: string;
   notes?: string;
@@ -72,6 +74,8 @@ export interface ReviewReport {
     repoUrl: string;
     askBotUrl?: string;
     walletAddress?: string;
+  walletSignature?: string;
+  walletSignatureMessage?: string;
   };
   summary: string;
   trustVerdict: string;
@@ -119,6 +123,7 @@ export interface RuntimeSnapshot {
 export interface CeloSnapshot {
   providedWallet: boolean;
   validWalletFormat: boolean;
+  walletOwnershipVerified: boolean;
   repoMentions: string[];
   inferredNetworks: string[];
   notes: string[];

@@ -29,7 +29,7 @@ export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
       0.95,
       (context.evidence.length * 0.05) +
         (context.request.askBotUrl || context.request.askBot ? 0.1 : 0) +
-        (onChainVerified ? 0.15 : 0)
+        (onChainVerified ? 0.15 : 0) + (context.celo.walletOwnershipVerified ? 0.1 : 0)
     )
   );
 
@@ -46,6 +46,7 @@ export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
 
 function safetyStartingScore(context: EvaluationContext): number {
   if (!context.celo.providedWallet) return 60;
+  if (context.celo.walletOwnershipVerified) return 88;
   if (context.celo.onChain.checked) return context.celo.onChain.isContract ? 68 : 78;
   return 65;
 }
