@@ -59,18 +59,21 @@
               </label>
 
               <div class="field-card">
-                <label for="walletAddressInput" class="field-label">Agent's Celo wallet address</label>
+                <div class="field-header-row">
+                  <label for="walletAddressInput" class="field-label">Agent's Celo wallet address</label>
+                  <span id="wallet-connection-pill" class="wallet-pill hidden"></span>
+                </div>
                 <input type="text" id="walletAddressInput" name="walletAddress" placeholder="0x..." />
-                <small>Required to verify real on-chain balance and activity before trusting this agent.</small>
+                <small>Required to verify on-chain balance and activity before trusting this agent.</small>
                 
                 <div class="wallet-proof-action">
-                  <button type="button" id="sign-ownership-btn" class="secondary-button compact-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    Sign Ownership Proof (personal_sign)
+                  <button type="button" id="connect-sign-wallet-btn" class="wallet-action-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                    <span id="connect-btn-label">Connect Wallet & Sign Proof</span>
                   </button>
                   <span id="wallet-signature-badge" class="signature-badge hidden">✓ Ownership Signed</span>
                 </div>
-                <small id="wallet-signature-text" class="signature-info">Click above to sign a cryptographic challenge with your Web3 wallet (MetaMask / MiniPay / Celo wallet).</small>
+                <small id="wallet-signature-text" class="signature-info">Click to connect your Web3 wallet (MetaMask, MiniPay, Rabby) and sign cryptographic ownership proof.</small>
               </div>
             </div>
 
@@ -80,68 +83,11 @@
               <small>This is the primary source of technical evidence.</small>
             </label>
 
-            <details class="field-card askbot-details">
-              <summary class="askbot-summary">
-                <span class="askbot-summary-title">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  AskBot Runtime Probing Configuration (Optional)
-                </span>
-                <span class="askbot-summary-sub">Probe live agent health & review API contracts</span>
-              </summary>
-
-              <div class="askbot-fields">
-                <div class="field-grid two-up">
-                  <label class="field-card">
-                    <span class="field-label">AskBot API Base URL</span>
-                    <input type="url" name="askBotBaseUrl" placeholder="https://my-agent.example.com/api" />
-                    <small>Base HTTP URL for runtime probing.</small>
-                  </label>
-
-                  <label class="field-card">
-                    <span class="field-label">HTTP Method</span>
-                    <select name="askBotMethod">
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                    </select>
-                    <small>HTTP method for calling the agent review endpoint.</small>
-                  </label>
-                </div>
-
-                <div class="field-grid two-up">
-                  <label class="field-card">
-                    <span class="field-label">Health path</span>
-                    <input type="text" name="askBotHealthPath" placeholder="/health" />
-                    <small>Path for health probe (optional).</small>
-                  </label>
-
-                  <label class="field-card">
-                    <span class="field-label">Review path</span>
-                    <input type="text" name="askBotReviewPath" placeholder="/review" />
-                    <small>Path for review probe (optional).</small>
-                  </label>
-                </div>
-
-                <div class="field-grid two-up">
-                  <label class="field-card">
-                    <span class="field-label">Auth Header Name</span>
-                    <input type="text" name="askBotAuthHeader" placeholder="Authorization" />
-                    <small>Custom header key if authentication is required.</small>
-                  </label>
-
-                  <label class="field-card">
-                    <span class="field-label">Auth Token / Key</span>
-                    <input type="text" name="askBotAuthToken" placeholder="Bearer your_secret_token" />
-                    <small>Token value passed in the auth header.</small>
-                  </label>
-                </div>
-
-                <label class="field-card">
-                  <span class="field-label">Expected Response Keys</span>
-                  <input type="text" name="askBotExpectedKeys" placeholder="status, verdict, result" />
-                  <small>Comma-separated list of key names expected in JSON probe responses.</small>
-                </label>
-              </div>
-            </details>
+            <label class="field-card">
+              <span class="field-label">AskBot / Agent runtime base URL (Optional)</span>
+              <input type="url" name="askBotBaseUrl" id="askBotBaseUrl" placeholder="https://my-agent.example.com" />
+              <small>Optional live API endpoint to audit runtime health, responsiveness, and contract availability.</small>
+            </label>
 
             <label class="field-card">
               <span class="field-label">Review notes</span>

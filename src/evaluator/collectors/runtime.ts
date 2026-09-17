@@ -27,16 +27,37 @@ export async function collectRuntimeSnapshot(request: ReviewRequest, evidence: E
   let expectedKeysMatched: string[] = [];
 
   if (config.healthPath) {
-    const healthUrl = new URL(config.healthPath, config.baseUrl).toString();
+    let healthUrl = new URL(config.healthPath, config.baseUrl).toString();
     try {
       const started = Date.now();
-      const response = await fetch(healthUrl, {
+      let response = await fetch(healthUrl, {
         method: 'GET',
         headers: buildHeaders(config, false, request.attributionTag)
       });
       latencyMs = Date.now() - started;
       healthStatusCode = response.status;
       contentType = response.headers.get('content-type') ?? undefined;
+
+      // Fallback: If default /health probe returned 404 and user did not specify a custom path, try root /
+      if (!response.ok && response.status === 404 && (!request.askBot?.healthPath || request.askBot.healthPath === '/health')) {
+        const rootUrl = new URL('/', config.baseUrl).toString();
+        if (rootUrl !== healthUrl) {
+          try {
+            const rootRes = await fetch(rootUrl, {
+              method: 'GET',
+              headers: buildHeaders(config, false, request.attributionTag)
+            });
+            if (rootRes.ok) {
+              response = rootRes;
+              healthUrl = rootUrl;
+              healthStatusCode = rootRes.status;
+              contentType = rootRes.headers.get('content-type') ?? undefined;
+            }
+          } catch {
+            // Keep original response
+          }
+        }
+      }
 
       evidence.push({
         type: 'http',
@@ -131,13 +152,17 @@ export async function collectRuntimeSnapshot(request: ReviewRequest, evidence: E
 
 function normalizeAskBotConfig(request: ReviewRequest): AskBotConfig | undefined {
   if (request.askBot) {
-    return request.askBot;
+    return {
+      ...request.askBot,
+      healthPath: request.askBot.healthPath ?? (request.askBot.reviewPath ? undefined : '/health'),
+      method: request.askBot.method ?? 'GET'
+    };
   }
 
   if (request.askBotUrl) {
     return {
       baseUrl: request.askBotUrl,
-      healthPath: '/',
+      healthPath: '/health',
       method: 'GET'
     };
   }

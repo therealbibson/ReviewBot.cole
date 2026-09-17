@@ -74,8 +74,10 @@ export interface ReviewReport {
     repoUrl: string;
     askBotUrl?: string;
     walletAddress?: string;
-  walletSignature?: string;
-  walletSignatureMessage?: string;
+    walletOwnershipVerified?: boolean;
+    walletSignature?: string;
+    walletSignatureMessage?: string;
+    celoNetwork?: string;
   };
   summary: string;
   trustVerdict: string;

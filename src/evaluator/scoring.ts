@@ -45,18 +45,28 @@ export function scoreEvaluation(context: EvaluationContext): ScoreBreakdown {
 }
 
 function safetyStartingScore(context: EvaluationContext): number {
-  if (!context.celo.providedWallet) return 60;
-  if (context.celo.walletOwnershipVerified) return 88;
-  if (context.celo.onChain.checked) return context.celo.onChain.isContract ? 68 : 78;
-  return 65;
+  if (!context.celo.providedWallet) return 50;
+  if (context.celo.walletOwnershipVerified) {
+    return context.celo.onChain.isContract ? 75 : 88;
+  }
+  // If signature was attempted but failed verification, critical trust failure
+  if (context.request.walletSignature) return 30;
+  // If a wallet was submitted with unverified ownership, starts in caution/unsafe range
+  return 50;
 }
 
 function economicViabilityStartingScore(context: EvaluationContext): number {
-  if (!context.celo.providedWallet) return 35;
-  if (!context.celo.onChain.checked) return 45;
+  if (!context.celo.providedWallet) return 30;
+  if (!context.celo.onChain.checked) return 40;
+
+  // CRITICAL: Only credit on-chain balance and activity IF ownership is cryptographically verified!
+  // Unverified wallets cannot claim credit for whale or burn address balances.
+  if (!context.celo.walletOwnershipVerified) {
+    return 35;
+  }
 
   const hasActivity = (context.celo.onChain.transactionCount ?? 0) > 0 || (context.celo.onChain.balanceCelo ?? 0) > 0;
-  return hasActivity ? 75 : 40;
+  return hasActivity ? 85 : 40;
 }
 
 function scoreCategory(context: EvaluationContext, category: Category, startingScore: number): CategoryScore {

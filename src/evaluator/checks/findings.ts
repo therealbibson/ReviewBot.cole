@@ -115,14 +115,36 @@ export function generateFindings(context: EvaluationContext): Finding[] {
 
 
   if (celo.providedWallet && celo.validWalletFormat && !celo.walletOwnershipVerified) {
-    findings.push({
-      title: 'Wallet ownership not verified',
-      severity: 'high',
-      category: 'safety',
-      summary: 'The wallet balance and activity were checked, but the submitter did not prove they control this wallet. Provide a personal_sign signature to verify ownership, or cross-check against a registered agent address on askbots.ai.',
-      evidence: ['No wallet signature was provided. Submit a signed message (personal_sign) to verify wallet ownership.'],
-      fix: 'Require a signed message from the wallet (e.g. personal_sign) or cross-check the wallet against a registered agent address on askbots.ai before trusting it.'
-    });
+    if (context.request.walletSignature) {
+      findings.push({
+        title: 'Wallet ownership signature verification failed',
+        severity: 'critical',
+        category: 'safety',
+        summary: 'A cryptographic signature was submitted, but verification failed for the specified wallet address. The signature may have been created by a different wallet or was improperly formatted.',
+        evidence: ['personal_sign cryptographic verification failed against the target wallet address.'],
+        fix: 'Connect the exact wallet specified in the form and sign the ownership proof with your wallet private key.'
+      });
+    } else {
+      findings.push({
+        title: 'Wallet ownership not verified',
+        severity: 'high',
+        category: 'safety',
+        summary: 'The wallet address was inspected on Celo, but no cryptographic proof was submitted demonstrating ownership. Anyone can claim a public whale or burn address without owning it.',
+        evidence: ['No wallet signature was provided. Wallet ownership remains unverified.'],
+        fix: 'Connect your Web3 wallet and sign the cryptographic ownership proof (personal_sign) to prove you control this address.'
+      });
+    }
+
+    if (celo.onChain.checked && ((celo.onChain.transactionCount ?? 0) > 0 || (celo.onChain.balanceCelo ?? 0) > 0)) {
+      findings.push({
+        title: 'Unverified on-chain funds cannot confirm economic viability',
+        severity: 'high',
+        category: 'economicViability',
+        summary: `The submitted wallet shows ${celo.onChain.balanceCelo ?? 0} CELO and ${celo.onChain.transactionCount ?? 0} transactions, but ownership is not verified. On-chain capital cannot be credited toward the agent's viability without proof of control.`,
+        evidence: ['Wallet has observed on-chain balance/activity, but lacks cryptographic proof binding the wallet to this agent.'],
+        fix: 'Sign the ownership challenge with the agent wallet to legitimately attribute its on-chain capital and track record.'
+      });
+    }
   }
 
   if (!repo.signals.hasCI) {

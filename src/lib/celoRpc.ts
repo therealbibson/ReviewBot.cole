@@ -1,4 +1,4 @@
-import { verifyMessage } from 'viem';
+import { verifyMessage, recoverMessageAddress, getAddress, createPublicClient, http } from 'viem';
 
 export type CeloNetworkId = 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
 
@@ -68,21 +68,123 @@ export async function fetchOnChainWalletSnapshot(
 }
 
 
+function validateChallengeMessage(address: string, message: string): { valid: boolean; error?: string } {
+  const normalizedMsg = message.toLowerCase();
+  const normalizedAddr = address.toLowerCase();
+
+  if (!normalizedMsg.includes(normalizedAddr)) {
+    return {
+      valid: false,
+      error: `Challenge message does not bind target wallet address (${address}).`
+    };
+  }
+
+  const hasReviewBotProof =
+    normalizedMsg.includes('reviewbot') ||
+    normalizedMsg.includes('celo wallet ownership') ||
+    normalizedMsg.includes('ownership proof');
+
+  if (!hasReviewBotProof) {
+    return {
+      valid: false,
+      error: 'Challenge message is missing ReviewBot ownership proof header.'
+    };
+  }
+
+  const matchTimestamp = message.match(/timestamp:\s*([^\n\r]+)/i);
+  if (matchTimestamp && matchTimestamp[1]) {
+    const timestampMs = Date.parse(matchTimestamp[1].trim());
+    if (!Number.isNaN(timestampMs)) {
+      const now = Date.now();
+      const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      const maxFutureMs = 10 * 60 * 1000; // 10 minutes clock skew
+      if (now - timestampMs > maxAgeMs) {
+        return {
+          valid: false,
+          error: 'Ownership challenge timestamp has expired (older than 7 days).'
+        };
+      }
+      if (timestampMs - now > maxFutureMs) {
+        return {
+          valid: false,
+          error: 'Ownership challenge timestamp is invalid (in the future).'
+        };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
 export async function verifyWalletSignature(
   address: string,
   message: string,
   signature: string,
-  _network: CeloNetworkId
+  network: CeloNetworkId
 ): Promise<{ verified: boolean; recoveredAddress?: string; error?: string }> {
   try {
-    const verified = await verifyMessage({
-      address: address as `0x${string}`,
+    const expectedChecksum = getAddress(address);
+
+    const challengeCheck = validateChallengeMessage(expectedChecksum, message);
+    if (!challengeCheck.valid) {
+      return {
+        verified: false,
+        error: challengeCheck.error
+      };
+    }
+
+    if (!signature.startsWith('0x') || signature.length < 130) {
+      return {
+        verified: false,
+        error: 'Signature format is invalid (expected 0x-prefixed hex string).'
+      };
+    }
+
+    const rpcUrl = rpcUrlForNetwork(network);
+
+    // 1. If RPC is available, use client.verifyMessage which validates both EOAs and ERC-1271 Smart Contract Wallets
+    if (rpcUrl) {
+      try {
+        const client = createPublicClient({
+          transport: http(rpcUrl)
+        });
+        const isValid = await client.verifyMessage({
+          address: expectedChecksum,
+          message,
+          signature: signature as `0x${string}`
+        });
+
+        if (isValid) {
+          return { verified: true, recoveredAddress: expectedChecksum };
+        }
+      } catch {
+        // Fall back to offline EOA recovery if RPC check throws
+      }
+    }
+
+    // 2. Offline fallback: recover ECDSA signer address for EOA wallets
+    const recovered = await recoverMessageAddress({
       message,
       signature: signature as `0x${string}`
     });
-    return { verified, recoveredAddress: address };
+
+    const recoveredChecksum = getAddress(recovered);
+    const verified = expectedChecksum.toLowerCase() === recoveredChecksum.toLowerCase();
+
+    if (!verified) {
+      return {
+        verified: false,
+        recoveredAddress: recoveredChecksum,
+        error: `Signature was produced by ${recoveredChecksum}, which does not match target address ${expectedChecksum}.`
+      };
+    }
+
+    return { verified: true, recoveredAddress: recoveredChecksum };
   } catch (error) {
-    return { verified: false, error: error instanceof Error ? error.message : 'Signature verification failed' };
+    return {
+      verified: false,
+      error: error instanceof Error ? error.message : 'Signature verification failed'
+    };
   }
 }
 

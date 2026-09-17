@@ -40,28 +40,37 @@ export async function collectCeloSnapshot(
   }
 
   let walletOwnershipVerified = false;
-  if (request.walletSignature && request.walletSignatureMessage && validWalletFormat && request.walletAddress) {
-    const result = await verifyWalletSignature(
-      request.walletAddress,
-      request.walletSignatureMessage,
-      request.walletSignature,
-      network
-    );
-    walletOwnershipVerified = result.verified;
-    evidence.push({
-      type: 'http',
-      label: 'Wallet ownership verification',
-      detail: result.verified
-        ? `Wallet ownership verified: personal_sign signature matches ${request.walletAddress}.`
-        : `Wallet ownership verification failed: ${result.error ?? 'signature mismatch'}`,
-      source: result.recoveredAddress,
-      status: result.verified ? 'pass' : 'fail'
-    });
+  if (request.walletSignature && validWalletFormat && request.walletAddress) {
+    if (!request.walletSignatureMessage) {
+      evidence.push({
+        type: 'http',
+        label: 'Wallet ownership verification',
+        detail: 'A wallet signature was submitted, but the accompanying signed challenge message was missing. Ownership could not be verified.',
+        status: 'fail'
+      });
+    } else {
+      const result = await verifyWalletSignature(
+        request.walletAddress,
+        request.walletSignatureMessage,
+        request.walletSignature,
+        network
+      );
+      walletOwnershipVerified = result.verified;
+      evidence.push({
+        type: 'http',
+        label: 'Wallet ownership verification',
+        detail: result.verified
+          ? `Wallet ownership cryptographically verified: personal_sign signature matches ${request.walletAddress} on Celo.`
+          : `Wallet ownership verification failed: ${result.error ?? 'signature mismatch'}`,
+        source: result.recoveredAddress,
+        status: result.verified ? 'pass' : 'fail'
+      });
+    }
   } else if (request.walletAddress) {
     evidence.push({
       type: 'heuristic',
       label: 'Wallet ownership not verified',
-      detail: 'No wallet signature was provided - ownership could not be verified.',
+      detail: 'No cryptographic wallet signature was provided. Wallet ownership remains unverified.',
       status: 'warn'
     });
   }

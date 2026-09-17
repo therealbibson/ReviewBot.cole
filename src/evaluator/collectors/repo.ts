@@ -1,4 +1,4 @@
-import { parseGitHubRepoUrl, fetchGitHubJson, fetchRawGitHubFile, type GitHubRepoDetails } from '../../lib/github.js';
+import { parseGitHubRepoUrl, fetchGitHubJson, fetchRawGitHubFile, fetchGitHubReadme, type GitHubRepoDetails } from '../../lib/github.js';
 import type { EvidenceItem, RepoSnapshot, ReviewRequest } from '../types.js';
 
 interface GitHubTreeResponse {
@@ -6,33 +6,70 @@ interface GitHubTreeResponse {
 }
 
 export async function collectRepoSnapshot(request: ReviewRequest, evidence: EvidenceItem[]): Promise<RepoSnapshot> {
-  const { owner, repo } = parseGitHubRepoUrl(request.repoUrl);
+  const { owner, repo, branch: requestedBranch } = parseGitHubRepoUrl(request.repoUrl);
 
-  let defaultBranch: string | undefined;
-  try {
-    const repoDetails = await fetchGitHubJson<GitHubRepoDetails>(`/repos/${owner}/${repo}`);
-    defaultBranch = repoDetails.default_branch;
-  } catch {
-    // If fetching repo details fails (e.g. scope limits), fall back silently to branch search
+  let defaultBranch: string | undefined = requestedBranch;
+  if (!defaultBranch) {
+    try {
+      const repoDetails = await fetchGitHubJson<GitHubRepoDetails>(`/repos/${owner}/${repo}`);
+      defaultBranch = repoDetails.default_branch;
+    } catch {
+      // If fetching repo details fails (e.g. rate limits), fall back silently to branch search
+    }
   }
 
-  const tree = await fetchGitHubJson<GitHubTreeResponse>(`/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`);
-  const files = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+  let files: string[] = [];
+  let treeApiFailed = false;
 
-  // Find exact README filename in tree files if present
+  try {
+    const tree = await fetchGitHubJson<GitHubTreeResponse>(`/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`);
+    files = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+  } catch (err) {
+    treeApiFailed = true;
+    const isRateLimit = err instanceof Error && err.message.toLowerCase().includes('rate limit');
+    evidence.push({
+      type: 'http',
+      label: isRateLimit ? 'GitHub API rate limited' : 'Tree inspection fallback',
+      detail: isRateLimit
+        ? 'GitHub API rate limit reached (60/hr unauthenticated). ReviewBot fell back to direct raw file inspection for README and package files.'
+        : `Could not fetch full repository tree (${err instanceof Error ? err.message : 'failed'}). Proceeding with direct file inspection.`,
+      status: 'warn'
+    });
+  }
+
+  // 1. Try official GitHub README endpoint (works for any default branch, develop, main, etc.)
+  let readme = await fetchGitHubReadme(owner, repo);
+
+  // 2. Fall back to finding exact README filename in tree files if API endpoint didn't return it
   const readmeFilePath = files.find((file) => /^readme(\.(md|markdown|txt|rst))?$/i.test(file)) ?? 'README.md';
-
-  const readme =
-    (await fetchRawGitHubFile(owner, repo, readmeFilePath, defaultBranch)) ??
-    (readmeFilePath !== 'README.md' ? await fetchRawGitHubFile(owner, repo, 'README.md', defaultBranch) : undefined) ??
-    (await fetchRawGitHubFile(owner, repo, 'readme.md', defaultBranch));
+  if (!readme) {
+    readme =
+      (await fetchRawGitHubFile(owner, repo, readmeFilePath, defaultBranch)) ??
+      (readmeFilePath !== 'README.md' ? await fetchRawGitHubFile(owner, repo, 'README.md', defaultBranch) : undefined) ??
+      (await fetchRawGitHubFile(owner, repo, 'readme.md', defaultBranch)) ??
+      (await fetchRawGitHubFile(owner, repo, 'README', defaultBranch));
+  }
 
   const packageFilePath = files.find((file) => /^package\.json$/i.test(file)) ?? 'package.json';
   const packageText = await fetchRawGitHubFile(owner, repo, packageFilePath, defaultBranch);
   const packageJson = packageText ? safeJsonParse(packageText) : undefined;
 
+  if (treeApiFailed) {
+    if (readme) files.push(readmeFilePath);
+    if (packageText) files.push(packageFilePath);
+  }
+
+  const hasTests =
+    files.some((file) => /(^|\/)(test|tests|__tests__)\//i.test(file)) ||
+    files.some((file) => /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(file)) ||
+    Boolean(packageJson?.scripts?.test && !packageJson.scripts.test.includes('no test specified')) ||
+    Boolean(
+      packageJson?.devDependencies &&
+        Object.keys(packageJson.devDependencies).some((k) => /jest|vitest|mocha|playwright|cypress|supertest/i.test(k))
+    );
+
   const signals = {
-    hasTests: files.some((file) => /(^|\/)(test|tests|__tests__)\//i.test(file)) || files.some((file) => /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(file)),
+    hasTests,
     hasCI: files.some((file) => file.startsWith('.github/workflows/')),
     hasDocker: files.includes('Dockerfile') || files.includes('docker-compose.yml') || files.includes('docker-compose.yaml'),
     mentionsCelo: containsAny([readme, packageText], ['celo', 'alfajores', 'forno', '42220', '44787', 'sepolia']),
@@ -43,7 +80,9 @@ export async function collectRepoSnapshot(request: ReviewRequest, evidence: Evid
   evidence.push({
     type: 'file',
     label: 'Repository inventory',
-    detail: `Indexed ${files.length} files from ${owner}/${repo}${defaultBranch ? ` (default branch: ${defaultBranch})` : ''}.`,
+    detail: treeApiFailed
+      ? `Inspected repository via raw file fallback from ${owner}/${repo}${defaultBranch ? ` (branch: ${defaultBranch})` : ''}.`
+      : `Indexed ${files.length} files from ${owner}/${repo}${defaultBranch ? ` (default branch: ${defaultBranch})` : ''}.`,
     source: request.repoUrl,
     status: 'pass'
   });
@@ -60,7 +99,7 @@ export async function collectRepoSnapshot(request: ReviewRequest, evidence: Evid
     evidence.push({
       type: 'file',
       label: 'README missing',
-      detail: `No README was found on ${defaultBranch ? `default branch (${defaultBranch}) or ` : ''}common fallback branches (main, master, develop, dev, trunk).`,
+      detail: `No README was found on ${defaultBranch ? `default branch (${defaultBranch}) or ` : ''}common fallback branches (main, master, develop, dev, trunk, staging, release).`,
       status: 'warn'
     });
   }

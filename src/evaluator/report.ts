@@ -4,10 +4,31 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
   const whatWorks = inferWhatWorks(context);
   const whatIsBroken = context.findings.map((finding) => finding.title);
   const improvementPlan = buildImprovementPlan(context);
-  const projectName = context.request.projectName ?? context.repo.packageJson?.name ?? context.repo.repo;
+  const projectName = context.request.projectName || context.repo.packageJson?.name || context.repo.repo || 'Unnamed Celo Project';
   const summary = summarize(scores.overall, context.findings.length, scores.confidence);
 
-  const trustVerdict = buildTrustVerdict(scores);
+  const trustVerdict = buildTrustVerdict(scores, context);
+
+  const walletAuditSection = context.celo.providedWallet
+    ? [
+        `## Celo Wallet & Ownership Audit`,
+        `- **Address**: ${context.request.walletAddress}`,
+        `- **Ownership Verified**: ${
+          context.celo.walletOwnershipVerified
+            ? '✓ YES — Cryptographically verified via personal_sign signature on Celo'
+            : '⚠️ NO — Unverified (no valid cryptographic proof of private key control)'
+        }`,
+        `- **Network**: ${context.celo.onChain.network}`,
+        `- **On-Chain Balance**: ${context.celo.onChain.balanceCelo ?? 0} CELO`,
+        `- **Transaction Count**: ${context.celo.onChain.transactionCount ?? 0}`,
+        `- **Account Type**: ${context.celo.onChain.isContract ? 'Smart Contract' : 'Standard EOA'}`,
+        ``
+      ]
+    : [
+        `## Celo Wallet & Ownership Audit`,
+        `- **Status**: No wallet provided. On-chain balance, activity, and economic viability could not be audited.`,
+        ``
+      ];
 
   const markdown = [
     `# On-Chain Agent Audit`,
@@ -21,6 +42,7 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
     `## Verdict`,
     summary,
     ``,
+    ...walletAuditSection,
     `## What Works`,
     ...whatWorks.map((item) => `- ${item}`),
     ``,
@@ -59,7 +81,11 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
       name: projectName,
       repoUrl: context.request.repoUrl,
       askBotUrl: context.request.askBotUrl,
-      walletAddress: context.request.walletAddress
+      walletAddress: context.request.walletAddress,
+      walletOwnershipVerified: context.celo.walletOwnershipVerified,
+      walletSignature: context.request.walletSignature,
+      walletSignatureMessage: context.request.walletSignatureMessage,
+      celoNetwork: context.celo.onChain.network
     },
     summary,
     trustVerdict,
@@ -73,10 +99,17 @@ export function buildReviewReport(context: EvaluationContext, scores: ScoreBreak
   };
 }
 
-function buildTrustVerdict(scores: ScoreBreakdown): string {
-  const usefulLabel = tierLabel(scores.usefulness.score);
-  const safeLabel = tierLabel(scores.safety.score);
-  const viableLabel = tierLabel(scores.economicViability.score);
+function buildTrustVerdict(scores: ScoreBreakdown, context: EvaluationContext): string {
+  let usefulLabel = tierLabel(scores.usefulness.score);
+  let safeLabel = tierLabel(scores.safety.score);
+  let viableLabel = tierLabel(scores.economicViability.score);
+
+  // If a wallet was submitted without verified cryptographic ownership,
+  // safety and viability cannot be marked "Yes"
+  if (context.celo.providedWallet && !context.celo.walletOwnershipVerified) {
+    if (safeLabel === 'Yes') safeLabel = 'Uncertain';
+    if (viableLabel === 'Yes') viableLabel = 'Uncertain';
+  }
 
   return `Useful: ${usefulLabel}. Safe: ${safeLabel}. Economically viable: ${viableLabel}.`;
 }
@@ -97,8 +130,9 @@ function inferWhatWorks(context: EvaluationContext): string[] {
 
   if (context.celo.onChain.checked) {
     if ((context.celo.onChain.transactionCount ?? 0) > 0 || (context.celo.onChain.balanceCelo ?? 0) > 0) {
-      const ownershipStatus = context.celo.walletOwnershipVerified ? '(ownership verified via signature)' : '(ownership unverified)';
-      works.add(`The provided wallet has on-chain balance or transaction history on Celo ${ownershipStatus}.`);
+      if (context.celo.walletOwnershipVerified) {
+        works.add(`The agent's verified Celo wallet has on-chain balance (${context.celo.onChain.balanceCelo ?? 0} CELO) and verifiable transaction history.`);
+      }
     }
   }
 

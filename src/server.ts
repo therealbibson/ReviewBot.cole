@@ -49,7 +49,10 @@ app.get('/health', (_req: Request, res: Response) => {
     startupWarning,
     askBotConfigured: Boolean(config.askBot),
     serverDefaultAskBotConfigured: Boolean(config.askBot),
-    perReviewAskBotSupported: true
+    perReviewAskBotSupported: true,
+    askBotProbingMode: 'per-review',
+    serverDefaultAskBotBaseUrl: config.askBot?.baseUrl ?? null,
+    gitHubTokenConfigured: Boolean(config.gitHubToken)
   });
 });
 

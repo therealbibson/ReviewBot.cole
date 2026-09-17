@@ -22,19 +22,27 @@ const markdownReport = document.getElementById('markdown-report');
 const markdownTitle = document.getElementById('markdown-title');
 const markdownSummary = document.getElementById('markdown-summary');
 
-const signOwnershipBtn = document.getElementById('sign-ownership-btn');
+const walletAddressInput = document.getElementById('walletAddressInput');
+const connectSignWalletBtn = document.getElementById('connect-sign-wallet-btn');
+const connectBtnLabel = document.getElementById('connect-btn-label');
+const walletConnectionPill = document.getElementById('wallet-connection-pill');
 const walletSignatureBadge = document.getElementById('wallet-signature-badge');
 const walletSignatureText = document.getElementById('wallet-signature-text');
+const walletSignatureInput = document.getElementById('walletSignature');
+const walletSignatureMessageInput = document.getElementById('walletSignatureMessage');
+
+const DRAFT_KEY = 'reviewbot:form-draft';
 
 setupMobileNav();
 setupFormDraftPersistence();
-setupWalletProofButton();
+setupWalletConnectAndSign();
 void loadHealth();
 void hydrateStoredReport();
 
 if (form) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    saveDraft();
     if (submitButton) submitButton.disabled = true;
     if (statusPanel) statusPanel.classList.remove('hidden');
     if (resultPanel) resultPanel.classList.add('hidden');
@@ -56,6 +64,7 @@ if (form) {
       persistReport(data);
       window.location.href = '/results';
     } catch (error) {
+      saveDraft();
       if (statusMessage) {
         statusMessage.textContent = friendlyErrorMessage(error instanceof Error ? error.message : 'Unexpected error');
       }
@@ -77,135 +86,308 @@ function setupMobileNav() {
   });
 }
 
+function shortenAddress(addr) {
+  if (!addr || typeof addr !== 'string') return '';
+  const clean = addr.trim();
+  if (clean.length <= 10) return clean;
+  return `${clean.slice(0, 6)}…${clean.slice(-4)}`;
+}
+
+function updateConnectionPill(address) {
+  if (!walletConnectionPill) return;
+  if (!address || !address.startsWith('0x') || address.length < 42) {
+    walletConnectionPill.classList.add('hidden');
+    walletConnectionPill.classList.remove('connected');
+    walletConnectionPill.textContent = '';
+    return;
+  }
+  walletConnectionPill.textContent = shortenAddress(address);
+  walletConnectionPill.classList.remove('hidden');
+  walletConnectionPill.classList.add('connected');
+}
+
+function clearSignature() {
+  if (walletSignatureInput) walletSignatureInput.value = '';
+  if (walletSignatureMessageInput) walletSignatureMessageInput.value = '';
+  if (walletSignatureBadge) walletSignatureBadge.classList.add('hidden');
+  const hasConnected = walletConnectionPill && !walletConnectionPill.classList.contains('hidden');
+  if (connectBtnLabel) {
+    connectBtnLabel.textContent = hasConnected ? 'Sign Ownership Proof' : 'Connect Wallet & Sign Proof';
+  }
+  saveDraft();
+}
+
+function setSignatureInputs(signature, message) {
+  if (walletSignatureInput) walletSignatureInput.value = signature;
+  if (walletSignatureMessageInput) walletSignatureMessageInput.value = message;
+  if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
+  if (connectBtnLabel) connectBtnLabel.textContent = 'Re-sign Ownership Proof';
+  saveDraft();
+}
+
+function saveDraft() {
+  if (!form) return;
+  try {
+    const formData = new FormData(form);
+    const draftObj = {};
+    for (const [key, val] of formData.entries()) {
+      if (typeof val === 'string' && val.trim()) {
+        draftObj[key] = val.trim();
+      }
+    }
+    if (walletAddressInput?.value?.trim()) {
+      draftObj.walletAddress = walletAddressInput.value.trim();
+    }
+    if (walletSignatureInput?.value) draftObj.walletSignature = walletSignatureInput.value;
+    if (walletSignatureMessageInput?.value) draftObj.walletSignatureMessage = walletSignatureMessageInput.value;
+
+    const serialized = JSON.stringify(draftObj);
+    sessionStorage.setItem(DRAFT_KEY, serialized);
+    try {
+      localStorage.setItem(DRAFT_KEY, serialized);
+    } catch {}
+  } catch {
+    // Ignore draft storage quota error
+  }
+}
+
 function setupFormDraftPersistence() {
   if (!form) return;
 
-  const DRAFT_KEY = 'reviewbot:form-draft';
-
-  // Restore draft if present
   try {
-    const storedDraft = sessionStorage.getItem(DRAFT_KEY);
+    const storedDraft = sessionStorage.getItem(DRAFT_KEY) || localStorage.getItem(DRAFT_KEY);
     if (storedDraft) {
       const draft = JSON.parse(storedDraft);
       Object.entries(draft).forEach(([name, val]) => {
         const field = form.querySelector(`[name="${name}"]`);
-        if (field && typeof val === 'string' && !field.value) {
+        if (field && typeof val === 'string') {
           field.value = val;
         }
       });
       if (draft.walletSignature && draft.walletSignatureMessage) {
         setSignatureInputs(draft.walletSignature, draft.walletSignatureMessage);
+        if (walletSignatureText) {
+          walletSignatureText.textContent = '✓ Saved ownership signature restored from draft.';
+          walletSignatureText.style.color = '#10b981';
+        }
+      }
+      if (draft.walletAddress) {
+        if (walletAddressInput) walletAddressInput.value = draft.walletAddress;
+        updateConnectionPill(draft.walletAddress);
       }
     }
   } catch {
     // Ignore draft restoration failures
   }
 
-  // Auto-save input changes
   form.addEventListener('input', () => {
-    try {
-      const formData = new FormData(form);
-      const draftObj = {};
-      for (const [key, val] of formData.entries()) {
-        if (typeof val === 'string' && val.trim()) {
-          draftObj[key] = val.trim();
+    saveDraft();
+  });
+  form.addEventListener('change', () => {
+    saveDraft();
+  });
+  if (walletAddressInput) {
+    walletAddressInput.addEventListener('blur', () => {
+      saveDraft();
+    });
+  }
+}
+
+function setupWalletConnectAndSign() {
+  if (!connectSignWalletBtn && !walletAddressInput) return;
+
+  // Auto-detect connected wallet account on page load if provider is available
+  if (typeof window.ethereum !== 'undefined') {
+    window.ethereum
+      .request({ method: 'eth_accounts' })
+      .then((accounts) => {
+        if (accounts && accounts.length > 0) {
+          const currentAccount = accounts[0];
+          updateConnectionPill(currentAccount);
+          if (walletAddressInput && !walletAddressInput.value.trim()) {
+            walletAddressInput.value = currentAccount;
+            walletAddressInput.dispatchEvent(new Event('input', { bubbles: true }));
+            saveDraft();
+          }
+          if (!walletSignatureInput?.value) {
+            if (connectBtnLabel) connectBtnLabel.textContent = 'Sign Ownership Proof';
+            if (walletSignatureText) {
+              walletSignatureText.textContent = `Wallet connected (${shortenAddress(currentAccount)}). Click button to sign cryptographic ownership proof.`;
+              walletSignatureText.style.color = '';
+            }
+          }
+        }
+      })
+      .catch(() => {});
+
+    // Listen to account changes from Web3 wallet (e.g. MetaMask account switch)
+    if (typeof window.ethereum.on === 'function') {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (!accounts || accounts.length === 0) {
+          clearSignature();
+          updateConnectionPill('');
+          saveDraft();
+          if (connectBtnLabel) connectBtnLabel.textContent = 'Connect Wallet & Sign Proof';
+          if (walletSignatureText) {
+            walletSignatureText.textContent = 'Wallet disconnected. Click above to connect and sign.';
+            walletSignatureText.style.color = '';
+          }
+        } else {
+          const newAccount = accounts[0];
+          if (walletAddressInput) {
+            walletAddressInput.value = newAccount;
+            walletAddressInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          updateConnectionPill(newAccount);
+          clearSignature();
+          saveDraft();
+          if (connectBtnLabel) connectBtnLabel.textContent = 'Sign Ownership Proof';
+          if (walletSignatureText) {
+            walletSignatureText.textContent = `Active account changed to ${shortenAddress(newAccount)}. Please sign ownership proof.`;
+            walletSignatureText.style.color = '';
+          }
+        }
+      });
+    }
+  }
+
+  // Handle manual input in wallet address field to stay synced
+  if (walletAddressInput) {
+    walletAddressInput.addEventListener('input', () => {
+      const entered = walletAddressInput.value.trim();
+      const signedMessage = walletSignatureMessageInput?.value || '';
+
+      if (walletSignatureInput?.value) {
+        if (!entered || !signedMessage.toLowerCase().includes(entered.toLowerCase())) {
+          clearSignature();
+          if (walletSignatureText) {
+            walletSignatureText.textContent = '⚠️ Wallet address changed. Please sign ownership proof for this new address.';
+            walletSignatureText.style.color = '#d9b775';
+          }
         }
       }
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draftObj));
-    } catch {
-      // Ignore draft storage quota error
-    }
-  });
-}
 
-function setupWalletProofButton() {
-  if (!signOwnershipBtn) return;
+      updateConnectionPill(entered);
+    });
+  }
 
-  signOwnershipBtn.addEventListener('click', async () => {
-    const walletInput = form?.querySelector('[name="walletAddress"]');
-    let address = walletInput ? walletInput.value.trim() : '';
-
-    if (typeof window.ethereum === 'undefined') {
-      if (walletSignatureText) {
-        walletSignatureText.textContent = '❌ Web3 wallet not detected in browser. Please install MetaMask, MiniPay, or use a Web3 browser.';
-        walletSignatureText.style.color = '#ef4444';
-      }
-      return;
-    }
-
-    try {
-      if (walletSignatureText) {
-        walletSignatureText.textContent = 'Connecting to Web3 wallet…';
-        walletSignatureText.style.color = '';
+  // Handle click on connect & sign button
+  if (connectSignWalletBtn) {
+    connectSignWalletBtn.addEventListener('click', async () => {
+      if (typeof window.ethereum === 'undefined') {
+        if (walletSignatureText) {
+          walletSignatureText.textContent = '❌ Web3 wallet not detected. Please install MetaMask, MiniPay, Rabby, or use a Web3 browser.';
+          walletSignatureText.style.color = '#ef4444';
+        }
+        return;
       }
 
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No account returned from Web3 wallet.');
-      }
+      connectSignWalletBtn.disabled = true;
 
-      const walletAccount = accounts[0];
-      if (walletInput) {
-        walletInput.value = walletAccount;
-        address = walletAccount;
-      }
-
-      const timestamp = new Date().toISOString();
-      const challengeMessage = `ReviewBot Celo Wallet Ownership Proof\nWallet: ${address}\nTimestamp: ${timestamp}`;
-
-      if (walletSignatureText) {
-        walletSignatureText.textContent = 'Please approve the personal_sign signature request in your wallet…';
-      }
-
-      let signature;
       try {
-        signature = await window.ethereum.request({
-          method: 'personal_sign',
-          params: [challengeMessage, address]
-        });
-      } catch {
-        // Retry with inverted param order if wallet expects [address, message]
-        signature = await window.ethereum.request({
-          method: 'personal_sign',
-          params: [address, challengeMessage]
-        });
-      }
+        if (walletSignatureText) {
+          walletSignatureText.textContent = 'Connecting to Web3 wallet…';
+          walletSignatureText.style.color = '#60a5fa';
+        }
+        if (connectBtnLabel) connectBtnLabel.textContent = 'Connecting…';
 
-      if (!signature) {
-        throw new Error('Signature was not returned.');
-      }
+        // 1. Request accounts to connect wallet
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No account returned. Please unlock your wallet and approve connection.');
+        }
 
-      setSignatureInputs(signature, challengeMessage);
+        const activeAccount = accounts[0];
+        if (walletAddressInput) {
+          walletAddressInput.value = activeAccount;
+          walletAddressInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        updateConnectionPill(activeAccount);
+        saveDraft();
 
-      if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
-      if (walletSignatureText) {
-        walletSignatureText.textContent = '✓ Signature attached! ReviewBot will verify wallet ownership on-chain during analysis.';
-        walletSignatureText.style.color = '#10b981';
-      }
-    } catch (err) {
-      if (walletSignatureText) {
-        walletSignatureText.textContent = `❌ Signature failed: ${err instanceof Error ? err.message : 'User rejected signature.'}`;
-        walletSignatureText.style.color = '#ef4444';
-      }
-    }
-  });
-}
+        // 2. Prepare message for personal_sign
+        const timestamp = new Date().toISOString();
+        const challengeMessage = `ReviewBot Celo Wallet Ownership Proof\nWallet: ${activeAccount.toLowerCase()}\nTimestamp: ${timestamp}`;
 
-function setSignatureInputs(signature, message) {
-  const sigInput = document.getElementById('walletSignature');
-  const msgInput = document.getElementById('walletSignatureMessage');
-  if (sigInput) sigInput.value = signature;
-  if (msgInput) msgInput.value = message;
-  if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
+        // Convert message to hex for standard EIP-1193 personal_sign
+        const hexMessage = '0x' + Array.from(new TextEncoder().encode(challengeMessage))
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('');
+
+        if (connectBtnLabel) connectBtnLabel.textContent = 'Sign in Wallet…';
+        if (walletSignatureText) {
+          walletSignatureText.textContent = 'Please confirm the personal_sign request in your wallet…';
+          walletSignatureText.style.color = '#60a5fa';
+        }
+
+        // 3. Request personal_sign from wallet
+        let signature;
+        try {
+          // Standard EIP-1193 params: [hexMessage, address]
+          signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [hexMessage, activeAccount]
+          });
+        } catch (firstErr) {
+          try {
+            // Fallback for providers expecting inverted params: [address, hexMessage]
+            signature = await window.ethereum.request({
+              method: 'personal_sign',
+              params: [activeAccount, hexMessage]
+            });
+          } catch (secondErr) {
+            // Fallback for providers accepting raw string: [challengeMessage, address]
+            signature = await window.ethereum.request({
+              method: 'personal_sign',
+              params: [challengeMessage, activeAccount]
+            });
+          }
+        }
+
+        if (!signature || typeof signature !== 'string') {
+          throw new Error('Signature was not returned by wallet.');
+        }
+
+        // 4. Update inputs, UI, and sync
+        setSignatureInputs(signature, challengeMessage);
+
+        if (walletSignatureBadge) walletSignatureBadge.classList.remove('hidden');
+        if (connectBtnLabel) connectBtnLabel.textContent = 'Re-sign Ownership Proof';
+        if (walletSignatureText) {
+          walletSignatureText.textContent = `✓ Ownership verified & synced for ${shortenAddress(activeAccount)}. Ready for audit!`;
+          walletSignatureText.style.color = '#10b981';
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const isUserRejected = errorMsg.toLowerCase().includes('reject') || errorMsg.toLowerCase().includes('cancel') || errorMsg.toLowerCase().includes('denied');
+
+        if (walletSignatureText) {
+          walletSignatureText.textContent = isUserRejected
+            ? '❌ Request cancelled in wallet. Click when ready to connect and sign.'
+            : `❌ Wallet action failed: ${errorMsg}`;
+          walletSignatureText.style.color = '#ef4444';
+        }
+
+        const hasConnected = walletConnectionPill && !walletConnectionPill.classList.contains('hidden');
+        if (connectBtnLabel) {
+          connectBtnLabel.textContent = hasConnected ? 'Sign Ownership Proof' : 'Connect Wallet & Sign Proof';
+        }
+      } finally {
+        connectSignWalletBtn.disabled = false;
+      }
+    });
+  }
 }
 
 function buildPayload(formData) {
   let projectName = stringOrUndefined(formData.get('projectName'));
-  const repoUrl = String(formData.get('repoUrl'));
+  const repoUrl = String(formData.get('repoUrl') || '');
   if (!projectName) {
     const m = repoUrl.match(/github\.com\/[^/]+\/([^/]+)/);
     if (m) projectName = m[1].replace(/\.git$/, '');
   }
+
+  const askBotBaseUrl = stringOrUndefined(formData.get('askBotBaseUrl'));
 
   const payload = {
     projectName,
@@ -213,29 +395,14 @@ function buildPayload(formData) {
     walletAddress: stringOrUndefined(formData.get('walletAddress')),
     walletSignature: stringOrUndefined(formData.get('walletSignature')),
     walletSignatureMessage: stringOrUndefined(formData.get('walletSignatureMessage')),
-    notes: stringOrUndefined(formData.get('notes'))
+    notes: stringOrUndefined(formData.get('notes')),
+    askBotUrl: askBotBaseUrl,
+    askBot: askBotBaseUrl ? { baseUrl: askBotBaseUrl } : undefined
   };
-
-  const askBotBaseUrl = stringOrUndefined(formData.get('askBotBaseUrl'));
-  if (askBotBaseUrl) {
-    const rawKeys = stringOrUndefined(formData.get('askBotExpectedKeys'));
-    const expectedResponseKeys = rawKeys
-      ? rawKeys.split(',').map((k) => k.trim()).filter(Boolean)
-      : undefined;
-
-    payload.askBot = {
-      baseUrl: askBotBaseUrl,
-      healthPath: stringOrUndefined(formData.get('askBotHealthPath')),
-      reviewPath: stringOrUndefined(formData.get('askBotReviewPath')),
-      method: (formData.get('askBotMethod') as string) === 'POST' ? 'POST' : 'GET',
-      authHeader: stringOrUndefined(formData.get('askBotAuthHeader')),
-      authToken: stringOrUndefined(formData.get('askBotAuthToken')),
-      expectedResponseKeys
-    };
-  }
 
   return payload;
 }
+
 
 function hydrateStoredReport() {
   const report = readStoredReport();
@@ -303,6 +470,7 @@ function renderReport(report) {
     overallScore.className = scoreToneClass(report.scores.overall);
   }
   renderSafetyIndicator(report);
+  renderWalletAuditCard(report);
   if (trustVerdictText) {
     trustVerdictText.textContent = report.trustVerdict || 'Trust verdict unavailable for this review.';
   }
@@ -332,6 +500,7 @@ function renderEmptyResults() {
     overallScore.className = '';
   }
   renderEmptySafetyIndicator();
+  renderEmptyWalletAuditCard();
   if (trustVerdictText) {
     trustVerdictText.textContent = 'Useful, safe, and economically viable status will appear here after a review.';
   }
@@ -341,6 +510,50 @@ function renderEmptyResults() {
   if (findingsList) renderFindings([]);
   if (evidenceList) renderEvidence([]);
   if (planList) renderPlan([]);
+}
+
+function renderWalletAuditCard(report) {
+  const resultWalletAddress = document.getElementById('result-wallet-address');
+  const resultOwnershipBadge = document.getElementById('result-ownership-badge');
+  const resultWalletSummary = document.getElementById('result-wallet-summary');
+
+  if (!resultWalletAddress || !resultOwnershipBadge || !resultWalletSummary) return;
+
+  const walletAddr = report.project?.walletAddress;
+  const isVerified = Boolean(report.project?.walletOwnershipVerified);
+
+  if (walletAddr) {
+    resultWalletAddress.textContent = shortenAddress(walletAddr);
+    resultWalletAddress.title = walletAddr;
+
+    if (isVerified) {
+      resultOwnershipBadge.className = 'badge-verified';
+      resultOwnershipBadge.textContent = '✓ Cryptographically Verified';
+      resultWalletSummary.textContent = 'Wallet ownership proved via personal_sign signature on Celo. On-chain capital and track record are verified.';
+    } else {
+      resultOwnershipBadge.className = 'badge-unverified';
+      resultOwnershipBadge.textContent = '⚠️ Ownership Unverified';
+      resultWalletSummary.textContent = 'No valid personal_sign ownership proof was submitted. On-chain funds and history cannot be credited to this agent.';
+    }
+  } else {
+    resultWalletAddress.textContent = 'No wallet address submitted';
+    resultOwnershipBadge.className = 'badge-unverified';
+    resultOwnershipBadge.textContent = 'No Wallet';
+    resultWalletSummary.textContent = 'No Celo wallet address was provided. On-chain balance and economic viability could not be audited.';
+  }
+}
+
+function renderEmptyWalletAuditCard() {
+  const resultWalletAddress = document.getElementById('result-wallet-address');
+  const resultOwnershipBadge = document.getElementById('result-ownership-badge');
+  const resultWalletSummary = document.getElementById('result-wallet-summary');
+
+  if (!resultWalletAddress || !resultOwnershipBadge || !resultWalletSummary) return;
+
+  resultWalletAddress.textContent = 'No wallet provided';
+  resultOwnershipBadge.className = 'badge-unverified';
+  resultOwnershipBadge.textContent = '⚠️ Unverified';
+  resultWalletSummary.textContent = 'Submit an address and sign ownership proof to verify on-chain backing.';
 }
 
 function renderSafetyIndicator(report) {

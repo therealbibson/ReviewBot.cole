@@ -155,11 +155,28 @@ npm run check
 
 The .env and .env.example files contain default AskBot API settings (ASK_BOT_BASE_URL, ASK_BOT_HEALTH_PATH, etc.) for local development and the /health endpoint status flag. **These server-level defaults are no longer injected into per-project reviews.** When a user submits a review without providing their own skBot configuration, the runtime probe is skipped entirely rather than silently checking the server's own AskBot endpoint. This was a bug fix: previously, every audit would hit the same hardcoded openclaw health endpoint regardless of which project was being reviewed.
 
-## Next recommended upgrades
+## Cryptographic Wallet Ownership Verification (personal_sign)
 
-- ~~clone repos into a temp workspace and run real build/test commands~~ (still recommended)
-- inspect README claims and verify them against runtime behavior
-- ~~add multi-turn AskBot conversation probes~~ (still recommended)
-- ~~add real Celo RPC checks for balances, transaction activity, and deployed contracts~~ (done)
-- persist reports and evaluation jobs
-- add authentication, rate limiting, and async job execution
+ReviewBot.Celo implements an end-to-end cryptographic challenge flow to verify that the submitter legitimately controls the agent's Celo wallet:
+1. **Wallet Connection & Challenge Signing**: The submitter connects their Web3 wallet (MetaMask, MiniPay, Rabby, etc.) and signs an EIP-191 `personal_sign` message binding the wallet address, timestamp, and ReviewBot challenge.
+2. **On-Chain & Cryptographic Verification**: The backend verifies the signature on Celo (via `viem`), validating both standard externally owned accounts (EOA) and smart contract wallets (via ERC-1271 contract calls on Celo RPC).
+3. **Strict Audit Trust Model**: Unverified wallets cannot claim credit for on-chain balances or transaction history. If ownership is unverified or signature fails, ReviewBot flags it with high/critical findings and withholds positive safety and economic viability verdicts.
+
+## Per-Project AskBot Runtime Probing
+
+ReviewBot supports configuring AskBot runtime probing directly in the UI and per review request via `askBot`:
+- Base URL (`baseUrl`)
+- Health probe path (`healthPath`)
+- Review probe path (`reviewPath`)
+- HTTP method (`GET` or `POST`)
+- Auth headers & Bearer tokens (`authHeader`, `authToken`)
+- Expected JSON response keys (`expectedResponseKeys`)
+- Sample request body (`sampleRequestBody`)
+
+Server-level defaults in `.env` serve only as local development defaults and do not bleed into per-project reviews.
+
+## Multi-Branch & Resilient GitHub Inspection
+
+- **Default Branch Resolution**: Automatically detects repository default branches (e.g. `main`, `master`, `develop`, `dev`, `trunk`, `staging`) and queries GitHub's `/readme` API endpoint.
+- **Rate-Limit Resilience**: Unauthenticated GitHub calls (60/hr) are tracked with exact reset timers in error messages. If `GITHUB_TOKEN` is configured, 5,000 req/hr limits apply. If GitHub API rate limits are encountered, ReviewBot gracefully falls back to direct raw content inspection without crashing the audit.
+- **Form Persistence**: Form inputs, wallet connections, and signatures automatically persist across sessions and errors via local and session storage.

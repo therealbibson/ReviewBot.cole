@@ -11,7 +11,9 @@ const envSchema = z.object({
   ASK_BOT_SAMPLE_REQUEST_BODY: z.string().optional(),
   ASK_BOT_EXPECTED_RESPONSE_KEYS: z.string().optional(),
   CELO_ATTRIBUTION_TAG: z.string().min(1).optional(),
-  CELO_NETWORK: z.enum(['celo-mainnet', 'celo-sepolia', 'not-applicable']).optional()
+  CELO_NETWORK: z.enum(['celo-mainnet', 'celo-sepolia', 'not-applicable']).optional(),
+  GITHUB_TOKEN: z.string().optional(),
+  GH_TOKEN: z.string().optional()
 });
 
 export type AppConfig = {
@@ -28,6 +30,7 @@ export type AppConfig = {
   };
   celoAttributionTag?: string;
   celoNetwork?: 'celo-mainnet' | 'celo-sepolia' | 'not-applicable';
+  gitHubToken?: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -50,7 +53,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         }
       : undefined,
     celoAttributionTag: parsed.CELO_ATTRIBUTION_TAG,
-    celoNetwork: parsed.CELO_NETWORK
+    celoNetwork: parsed.CELO_NETWORK,
+    gitHubToken: parsed.GITHUB_TOKEN ?? parsed.GH_TOKEN
   };
 }
 

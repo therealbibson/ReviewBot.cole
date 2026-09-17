@@ -3,6 +3,7 @@ import { fetchText } from './http.js';
 export interface GitHubRepoRef {
   owner: string;
   repo: string;
+  branch?: string;
 }
 
 export interface GitHubRepoDetails {
@@ -17,12 +18,20 @@ export function parseGitHubRepoUrl(repoUrl: string): GitHubRepoRef {
     throw new Error('Only public github.com repository URLs are supported in this MVP.');
   }
 
-  const [owner, repo] = url.pathname.split('/').filter(Boolean);
+  const parts = url.pathname.split('/').filter(Boolean);
+  const owner = parts[0];
+  const repo = parts[1]?.replace(/\.git$/, '');
+
   if (!owner || !repo) {
     throw new Error('Repository URL must look like https://github.com/owner/repo.');
   }
 
-  return { owner, repo: repo.replace(/\.git$/, '') };
+  let branch: string | undefined;
+  if (parts[2] === 'tree' && parts[3]) {
+    branch = parts.slice(3).join('/');
+  }
+
+  return { owner, repo, branch };
 }
 
 function getGitHubHeaders(): Record<string, string> {
@@ -48,11 +57,22 @@ export async function fetchGitHubJson<T>(path: string): Promise<T> {
   if (!response.ok) {
     const isRateLimit = response.status === 403 || response.status === 429;
     const remaining = response.headers.get('x-ratelimit-remaining');
+    const resetTime = response.headers.get('x-ratelimit-reset');
 
     if (isRateLimit && (remaining === '0' || response.status === 429)) {
-      throw new Error(
-        'GitHub API rate limit exceeded (60 requests/hour unauthenticated). Add a GITHUB_TOKEN to your .env file for higher limits (5,000 requests/hour).'
-      );
+      let resetMsg = '';
+      if (resetTime) {
+        const resetDate = new Date(Number(resetTime) * 1000);
+        const minutesRemaining = Math.max(1, Math.ceil((resetDate.getTime() - Date.now()) / 60000));
+        resetMsg = ` (resets in ~${minutesRemaining} min at ${resetDate.toLocaleTimeString()})`;
+      }
+
+      const hasToken = Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN);
+      const helpMsg = hasToken
+        ? `GitHub API rate limit reached${resetMsg}. Please wait or try again later.`
+        : `GitHub API rate limit exceeded (60 requests/hour unauthenticated)${resetMsg}. Add a GITHUB_TOKEN to your .env file for higher limits (5,000 requests/hour).`;
+
+      throw new Error(helpMsg);
     }
 
     throw new Error(
@@ -80,6 +100,9 @@ export async function fetchRawGitHubFile(
   candidateBranches.add('develop');
   candidateBranches.add('dev');
   candidateBranches.add('trunk');
+  candidateBranches.add('staging');
+  candidateBranches.add('release');
+  candidateBranches.add('production');
 
   const headers = getGitHubHeaders();
 
@@ -91,5 +114,28 @@ export async function fetchRawGitHubFile(
     }
   }
 
+  return undefined;
+}
+
+export async function fetchGitHubReadme(owner: string, repo: string): Promise<string | undefined> {
+  try {
+    interface GitHubReadmeData {
+      content?: string;
+      encoding?: string;
+      download_url?: string;
+    }
+    const data = await fetchGitHubJson<GitHubReadmeData>(`/repos/${owner}/${repo}/readme`);
+    if (data.content && data.encoding === 'base64') {
+      return Buffer.from(data.content, 'base64').toString('utf8');
+    }
+    if (data.download_url) {
+      const result = await fetchText(data.download_url, getGitHubHeaders());
+      if (result.status === 200) {
+        return result.body;
+      }
+    }
+  } catch {
+    // Fall back to branch candidate checks if readme endpoint fails
+  }
   return undefined;
 }
